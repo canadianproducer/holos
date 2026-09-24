@@ -2,12 +2,15 @@
 # Uses the GitHub login that Git already has (Git Credential Manager) - no extra tokens to create.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+Start-Transcript -Path ".build\upload.log" -Force | Out-Null
+trap { Write-Host "ERROR: $_"; Write-Host $_.ScriptStackTrace; Stop-Transcript | Out-Null; exit 1 }
 $repo = "canadianproducer/holos"
 $ver = (Select-String -Path "app\common.py" -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
 $asset = "dist\Holos-Setup-$ver.exe"
 if (-not (Test-Path $asset)) { throw "Not found: $asset. Run build-release.bat first." }
 
-$cred = "protocol=https`nhost=github.com`n`n" | git credential fill
+# ask Git Credential Manager for the saved GitHub login (lines are piped one by one)
+$cred = @("protocol=https", "host=github.com", "") | git credential fill
 $token = (($cred | Where-Object { $_ -like "password=*" }) -replace "^password=", "")
 if (-not $token) { throw "No GitHub login in Git. Run publish.bat first." }
 $h = @{ Authorization = "Bearer $token"; Accept = "application/vnd.github+json"; "User-Agent" = "holos-release" }
@@ -35,3 +38,4 @@ Invoke-RestMethod -Method Post -Headers $h -InFile $asset -ContentType "applicat
     -Uri "https://uploads.github.com/repos/$repo/releases/$($rel.id)/assets?name=$name" -TimeoutSec 7200 | Out-Null
 Write-Host ""
 Write-Host "DONE: $($rel.html_url)"
+Stop-Transcript | Out-Null
