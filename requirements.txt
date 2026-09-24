@@ -1,0 +1,24 @@
+# torch/torchaudio ставляться окремо (CPU або CUDA) — див. build.bat
+numpy<2
+soundfile
+sounddevice
+librosa
+scipy
+einops
+einops_exts
+munch
+pyyaml
+transformers==5.17.0
+huggingface_hub
+ctranslate2==4.8.2
+sentencepiece
+faster-whisper==1.2.1
+piper-tts==1.8.0
+stanza==1.14.0
+ukrainian-word-stress @ https://github.com/patriotyk/ukrainian-word-stress/archive/refs/heads/main.zip
+ipa-uk @ https://github.com/patriotyk/ipa-uk/archive/refs/heads/main.zip
+styletts2-inference @ https://github.com/patriotyk/styletts2-inference/archive/209352700cf703a05ff94501290095dd9072fd5f.zip
+keyboard
+pyperclip
+pystray
+pillow

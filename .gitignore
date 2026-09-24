@@ -1,0 +1,10 @@
+.build/
+dist/
+build/
+models/
+logs/
+config.json
+__pycache__/
+portable.txt
+test_run.bat
+*.spec.bak
