@@ -16,7 +16,10 @@ $notes = if (Test-Path "release_notes.md") { [IO.File]::ReadAllText("release_not
 $tag = "v$ver"
 try {
     $rel = Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/$repo/releases/tags/$tag"
-    Write-Host "Release $tag already exists, adding the file to it"
+    Write-Host "Release $tag already exists: updating notes and the file"
+    $patch = @{ body = $notes; name = "Holos $ver" } | ConvertTo-Json
+    $rel = Invoke-RestMethod -Method Patch -Headers $h -Uri "https://api.github.com/repos/$repo/releases/$($rel.id)" `
+        -Body ([Text.Encoding]::UTF8.GetBytes($patch)) -ContentType "application/json; charset=utf-8"
 } catch {
     $body = @{ tag_name = $tag; target_commitish = "main"; name = "Holos $ver"; body = $notes } | ConvertTo-Json
     $rel = Invoke-RestMethod -Method Post -Headers $h -Uri "https://api.github.com/repos/$repo/releases" `

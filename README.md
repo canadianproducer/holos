@@ -66,12 +66,15 @@ Holos.exe --selftest   # перевірка всіх рушіїв без інт�
 
 Pull requests і ідеї — вітаються!
 
-## Автори
+## Автор
 
-- **Alex Potapenko ([Canadian Producer](https://github.com/canadianproducer))** — ідея, вимоги, тестування, продуктові рішення.
-- **Claude (Opus 5.5, Anthropic)** — AI-агент, який написав код разом з автором: архітектура, реалізація, збірка, налагодження на реальному Windows.
+**Alex Potapenko ([Canadian Producer](https://github.com/canadianproducer))**
 
-Проєкт створено в діалозі людини й AI-агента — від першої ідеї до робочої програми.
+## Як це зроблено
+
+Код написано в парі з AI-асистентом Claude — від першої ідеї до робочої програми, у діалозі: автор ставив задачі, тестував на своєму комп'ютері й ухвалював рішення, асистент писав і налагоджував код.
+
+<sub>Проєкт незалежний і не пов'язаний з Anthropic.</sub>
 
 ## Подяки
 
@@ -102,4 +105,4 @@ Pull requests і ідеї — вітаються!
 
 Download `Holos-Setup.exe` from [Releases](../../releases/latest). First launch downloads models (~3 GB) once.
 
-Made by **Alex Potapenko (Canadian Producer)** together with **Claude (Opus 5.5, Anthropic)** as the AI coding agent. Licensed under GPL-3.0.
+Made by **Alex Potapenko (Canadian Producer)**. The code was written in pair with the AI assistant Claude. This is an independent project, not affiliated with Anthropic. Licensed under GPL-3.0.

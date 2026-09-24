@@ -10,4 +10,4 @@
 - 🔄 Автоматичні оновлення
 - 🔒 Усе працює локально, без інтернету
 
-Зроблено Alex Potapenko (Canadian Producer) разом із Claude (Opus 5.5, Anthropic).
+Автор — Alex Potapenko (Canadian Producer). Код написано в парі з AI-асистентом Claude. Проєкт незалежний і не пов'язаний з Anthropic.
