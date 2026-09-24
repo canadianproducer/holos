@@ -2,8 +2,16 @@
 #ifndef Variant
   #define Variant "cpu"
 #endif
+#ifndef DistDir
+  #define DistDir "dist\Holos"
+#endif
+#if Variant == "cpu"
+  #define Suffix ""
+#else
+  #define Suffix "-" + Variant
+#endif
 #define AppName "Голос"
-#define AppVersion "0.2.0"
+#define AppVersion "0.3.0"
 
 [Setup]
 AppId={{6C1E2B7A-4F4B-4E8B-9C2A-5A1D0C0F0001}
@@ -14,13 +22,17 @@ DefaultDirName={localappdata}\Programs\Holos
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
 OutputDir=dist
-OutputBaseFilename=Holos-Setup-{#Variant}
+OutputBaseFilename=Holos-Setup-{#AppVersion}{#Suffix}
 SetupIconFile=assets\holos.ico
 UninstallDisplayIcon={app}\Holos.exe
 Compression=lzma2/fast
 SolidCompression=no
 DiskSpanning=no
 WizardStyle=modern
+CloseApplications=force
+RestartApplications=no
+AppPublisherURL=https://github.com/canadianproducer/holos
+AppUpdatesURL=https://github.com/canadianproducer/holos/releases
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
@@ -33,7 +45,7 @@ Name: "desktopicon"; Description: "Ярлик на робочому столі";
 Name: "autostart"; Description: "Запускати разом з Windows"
 
 [Files]
-Source: "dist\Holos\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\Holos.exe"
@@ -43,6 +55,8 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\Holos.exe"; Tasks: autostart
 
 [Run]
 Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent
+; після тихого оновлення з програми — запускаємо нову версію
+Filename: "{app}\Holos.exe"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM Holos.exe /F"; Flags: runhidden; RunOnceId: "KillHolos"

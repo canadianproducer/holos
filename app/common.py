@@ -6,7 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 FROZEN = getattr(sys, "frozen", False)
 # У віконному exe немає консолі: stdout/stderr = None, і бібліотеки (tqdm тощо) падають при друку.
 if sys.stdout is None:
@@ -150,6 +150,11 @@ def add_cuda_dll_dirs():
     if os.name != "nt":
         return
     try:
+        import cuda_pack
+        cuda_pack.add_to_path()          # пакет прискорення, докачаний при першому запуску
+    except Exception as e:
+        logging.warning("cuda_pack: %s", e)
+    try:
         import torch  # noqa: F401
         lib = Path(torch.__file__).parent / "lib"
         if lib.exists():
@@ -157,6 +162,32 @@ def add_cuda_dll_dirs():
             os.environ["PATH"] = str(lib) + os.pathsep + os.environ.get("PATH", "")
     except Exception as e:
         logging.warning("torch\\lib не додано: %s", e)
+
+
+def cuda_libs_available() -> bool:
+    """cuBLAS і cuDNN є або в пакеті прискорення, або в CUDA-збірці torch."""
+    dirs = [MODELS / "cuda"]
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec("torch")
+        if spec and spec.origin:
+            dirs.append(Path(spec.origin).parent / "lib")
+    except Exception:
+        pass
+    return any((d / "cudnn64_9.dll").exists() and (d / "cublas64_12.dll").exists() for d in dirs)
+
+
+def pick_stt_device(pref: str) -> str:
+    """Для faster-whisper питаємо саму ctranslate2 (не залежить від того, CPU чи CUDA-збірка torch)."""
+    if pref in ("cuda", "cpu"):
+        return pref
+    if not cuda_libs_available():
+        return "cpu"   # без cuDNN ctranslate2 може аварійно закрити програму — не ризикуємо
+    try:
+        import ctranslate2
+        return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
+    except Exception:
+        return "cpu"
 
 
 def pick_device(pref: str) -> str:

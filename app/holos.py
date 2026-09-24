@@ -192,6 +192,7 @@ class App:
 
         self.tray = None
         self.update = None
+        self.ask_update = False
         self.repair_autostart()
         threading.Thread(target=self.check_update, name="update", daemon=True).start()
         threading.Thread(target=self.load_models, name="loader", daemon=True).start()
@@ -203,6 +204,9 @@ class App:
         self.events.put((state, text))
 
     def tick(self):
+        if self.ask_update:
+            self.ask_update = False
+            self.prompt_update()
         try:
             while True:
                 state, text = self.events.get_nowait()
@@ -336,19 +340,73 @@ class App:
 
     # ---------- оновлення ----------
     def check_update(self):
-        time.sleep(20)
+        time.sleep(15)
         import updater
         from common import DEFAULTS
         repo = self.cfg["update_repo"] or DEFAULTS["update_repo"]   # "none" = не перевіряти
         self.update = None if repo == "none" else updater.check(repo)
         if self.update:
-            log.info("Доступне оновлення %s", self.update[0])
+            log.info("Доступне оновлення %s", self.update["tag"])
             try:
                 if self.tray:
                     self.tray.update_menu()
-                    self.tray.notify(f"Доступна нова версія {self.update[0]}", "Голос")
             except Exception:
                 pass
+            self.ask_update = True        # діалог покаже головний потік (tkinter — лише з нього)
+
+    def prompt_update(self):
+        from tkinter import messagebox
+        u = self.update
+        notes = ("\n\nЩо нового:\n" + u["notes"]) if u.get("notes") else ""
+        if not u.get("asset"):
+            if messagebox.askyesno("Голос", f"Доступна нова версія {u['tag']}.{notes}\n\nВідкрити сторінку завантаження?"):
+                import webbrowser
+                webbrowser.open(u["page"])
+            return
+        if messagebox.askyesno("Голос — оновлення",
+                               f"Доступна нова версія {u['tag']} (у вас {VERSION}).{notes}\n\n"
+                               "Оновити зараз? Налаштування й моделі збережуться."):
+            threading.Thread(target=self.install_update, daemon=True).start()
+
+    def install_update(self):
+        import updater
+        u = self.update
+        try:
+            path = updater.download(u["asset"], u["size"],
+                                    lambda pct: self.set_state("loading", f"Завантажую оновлення… {pct:.0f}%"))
+            self.set_state("loading", "Встановлюю оновлення…")
+            log.info("Оновлення: запускаю %s", path)
+            updater.run_installer(path)
+            time.sleep(1)
+            self.quit()
+        except Exception as e:
+            log.exception("Оновлення")
+            self.set_state("error", f"Не вдалося оновити: {e}"[:60])
+
+    # ---------- прискорення NVIDIA для вже встановленої програми ----------
+    def gpu_pack_offer(self):
+        try:
+            import cuda_pack
+            from common import cuda_libs_available
+            return cuda_pack.has_nvidia() and not cuda_libs_available()
+        except Exception:
+            return False
+
+    def install_gpu_pack(self):
+        def work():
+            import cuda_pack
+            try:
+                cuda_pack.install(lambda d, t: self.set_state("loading", f"Прискорення NVIDIA: {d:.0f} / {t} МБ"))
+                self.set_state("loading", "Перезапускаю розпізнавання…")
+                self.transcriber.load()
+                self.set_state("idle")
+                self.update_tray_title()
+                if self.tray:
+                    self.tray.update_menu()
+            except Exception as e:
+                log.exception("Пакет прискорення")
+                self.set_state("error", f"Прискорення: {e}"[:60])
+        threading.Thread(target=work, daemon=True).start()
 
     # ---------- трей ----------
     def update_tray_title(self):
@@ -402,8 +460,9 @@ class App:
             I("Розумне очищення (Ollama)", lambda: cfg.set("cleanup", "off" if cfg["cleanup"] != "off" else "auto"),
               checked=lambda _: cfg["cleanup"] != "off"),
             I("Швидкість читання", M(*[radio("speed", s, f"{s:.1f}×") for s in (0.8, 0.9, 1.0, 1.1, 1.2)])),
-            I(lambda _: f"⬆ Оновити до {self.update[0]}" if self.update else "", self.open_update,
-              visible=lambda _: bool(self.update)),
+            I(lambda _: f"⬆ Оновити до {self.update['tag']}" if self.update else "",
+              lambda: setattr(self, "ask_update", True), visible=lambda _: bool(self.update)),
+            I("⚡ Увімкнути прискорення NVIDIA", self.install_gpu_pack, visible=lambda _: self.gpu_pack_offer()),
             M.SEPARATOR,
             I("Скопіювати останню диктовку", lambda: winutil.clip_set(self.last_text),
               enabled=lambda _: bool(self.last_text)),
@@ -417,11 +476,6 @@ class App:
         self.tray = pystray.Icon("holos", img, "Голос — завантаження…", menu)
         self.update_tray_title()
         self.tray.run()
-
-    def open_update(self):
-        if self.update:
-            import webbrowser
-            webbrowser.open(self.update[1])
 
     def autostart_path(self):
         from pathlib import Path
@@ -469,6 +523,15 @@ class App:
         os._exit(0)
 
 
+def _ollama_running() -> bool:
+    import urllib.request
+    try:
+        urllib.request.urlopen("http://127.0.0.1:11434/api/version", timeout=1)
+        return True
+    except Exception:
+        return False
+
+
 def first_run_setup() -> bool:
     """Вікно першого запуску: завантаження моделей з прогресом."""
     from tkinter import ttk
@@ -493,13 +556,40 @@ def first_run_setup() -> bool:
         lb = ttk.Label(frm, text="○  " + st)
         lb.pack(anchor="w")
         labels.append(lb)
+
+    # --- необов'язкові доповнення ---
+    import cuda_pack
+    from common import cuda_libs_available
+    from cleanup import Cleaner
+    extras = ttk.Frame(frm)
+    extras.pack(anchor="w", fill="x", pady=(10, 0))
+    var_gpu = tk.BooleanVar(value=False)
+    if cuda_pack.has_nvidia() and not cuda_libs_available():
+        var_gpu.set(True)
+        ttk.Checkbutton(extras, variable=var_gpu, text=(
+            f"Прискорення на відеокарті NVIDIA (+{cuda_pack.APPROX_MB / 1000:.1f} ГБ) — "
+            "розпізнавання у 5–10 разів швидше")).pack(anchor="w")
+    cfg = Config()
+    cleaner = Cleaner(cfg)
+    ollama_models = cleaner.available_models()
+    var_llm = tk.BooleanVar(value=False)
+    ollama_up = bool(ollama_models) or cleaner.pick_model() is not None or _ollama_running()
+    if ollama_up and not cleaner.pick_model():
+        ttk.Checkbutton(extras, variable=var_llm, text=(
+            "Розумне очищення тексту: завантажити модель qwen3:8b в Ollama (~5 ГБ)")).pack(anchor="w")
+    elif not ollama_up:
+        lnk = ttk.Label(extras, foreground="#2f6fd6", cursor="hand2", text=(
+            "Необов'язково: для «розумного очищення» тексту встановіть Ollama (ollama.com)"))
+        lnk.pack(anchor="w")
+        lnk.bind("<Button-1>", lambda _: __import__("webbrowser").open("https://ollama.com/download/windows"))
+
     bar = ttk.Progressbar(frm, length=440, maximum=len(STEPS))
     bar.pack(pady=12)
     status = ttk.Label(frm, text="", foreground="#555")
     status.pack(anchor="w")
     btns = ttk.Frame(frm)
     btns.pack(anchor="e", pady=(10, 0))
-    result = {"ok": False, "err": None, "step": 0, "done": False}
+    result = {"ok": False, "err": None, "step": 0, "done": False, "msg": ""}
 
     def progress(i, n, msg):
         result["step"] = i
@@ -507,6 +597,14 @@ def first_run_setup() -> bool:
     def worker():
         try:
             download_all(progress)
+            if var_gpu.get():
+                result["msg"] = "Прискорення NVIDIA…"
+                cuda_pack.install(lambda d, t: result.update(msg=f"Прискорення NVIDIA: {d:.0f} / {t} МБ"))
+            if var_llm.get():
+                try:
+                    cleaner.pull("qwen3:8b", lambda pct, m: result.update(msg=f"Модель очищення: {pct:.0f}%"))
+                except Exception as e:
+                    logging.warning("Ollama pull: %s", e)   # не критично — програма працює й без очищення
             result["ok"] = True
         except Exception as e:
             logging.exception("Завантаження моделей")
@@ -516,9 +614,12 @@ def first_run_setup() -> bool:
     def poll():
         i = result["step"]
         for k, lb in enumerate(labels):
-            mark = "✓" if k < i - 1 or result["ok"] else ("⏳" if k == i - 1 else "○")
+            mark = "✓" if k < i - 1 or result["ok"] or (i == len(STEPS) and result["msg"]) else (
+                "⏳" if k == i - 1 else "○")
             lb.config(text=f"{mark}  {STEPS[k]}")
         bar["value"] = len(STEPS) if result["ok"] else max(0, i - 1)
+        if result["msg"] and not result["done"]:
+            status.config(text=result["msg"])
         if result["done"]:
             if result["ok"]:
                 status.config(text="Готово! Запускаю…")

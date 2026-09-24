@@ -84,6 +84,14 @@ class Cleaner:
         v = self.cfg["vocabulary"] or []
         return ("\n\nKnown names/terms (always use exactly this spelling): " + ", ".join(v)) if v else ""
 
+    def is_loaded(self, model):
+        """Чи модель уже у відеопам'яті (інакше перший запит чекатиме її завантаження десятки секунд)."""
+        try:
+            return any(m.get("name") == model or m.get("model") == model
+                       for m in self._get("/api/ps", timeout=0.5).get("models", []))
+        except Exception:
+            return False
+
     def enabled(self):
         return self.cfg["cleanup"] != "off"
 
@@ -93,6 +101,13 @@ class Cleaner:
         model = self.pick_model()
         if not model:
             logging.info("Очищення: Ollama недоступна — лишаю сирий текст")
+            return text
+        if not self.is_loaded(model):
+            # Не змушуємо людину чекати: вставляємо як є, а модель вантажимо у фоні на наступний раз.
+            logging.info("Очищення: %s ще не в пам'яті — вставляю без очищення, вантажу у фоні", model)
+            import threading
+            self._last_load = 0
+            threading.Thread(target=self.preload, daemon=True).start()
             return text
         body = json.dumps({
             "model": model, "stream": False, "keep_alive": "30m", "think": False,
@@ -104,7 +119,8 @@ class Cleaner:
         try:
             req = urllib.request.Request(OLLAMA + "/api/chat", data=body,
                                          headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=float(self.cfg["cleanup_timeout"])) as r:
+            # жорстка межа: краще вставити сирий текст, ніж змушувати чекати
+            with urllib.request.urlopen(req, timeout=min(float(self.cfg["cleanup_timeout"]), 12)) as r:
                 out = json.loads(r.read().decode("utf-8"))["message"]["content"].strip()
         except Exception as e:
             logging.warning("Очищення не вдалося (%s) — лишаю сирий текст", e)
@@ -140,6 +156,23 @@ class Cleaner:
             logging.info("Ollama: %s у пам'яті (%.1f с)", model, time.time() - t)
         except Exception as e:
             logging.warning("Ollama: не вдалося завантажити %s: %s", model, e)
+
+    def pull(self, model="qwen3:8b", progress=lambda pct, msg: None):
+        """Завантажує модель в Ollama (як `ollama pull`), з прогресом."""
+        body = json.dumps({"model": model, "stream": True}).encode("utf-8")
+        req = urllib.request.Request(OLLAMA + "/api/pull", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3600) as r:
+            for line in r:
+                try:
+                    ev = json.loads(line.decode("utf-8"))
+                except ValueError:
+                    continue
+                if ev.get("error"):
+                    raise RuntimeError(ev["error"])
+                tot, comp = ev.get("total") or 0, ev.get("completed") or 0
+                progress(100 * comp / tot if tot else 0, ev.get("status", ""))
+        self.checked = 0
+        self.cfg.set("cleanup_model", model)
 
     def warmup(self):
         self.preload()

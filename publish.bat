@@ -26,11 +26,11 @@ echo.
 echo ============================================================
 echo  DONE: https://github.com/canadianproducer/holos
 echo ============================================================
-pause
+if not defined NOPAUSE pause
 exit /b 0
 
 :fail
 echo.
 echo PUBLISH FAILED. Copy the text above and send it to Claude.
-pause
+if not defined NOPAUSE pause
 exit /b 1

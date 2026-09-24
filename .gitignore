@@ -8,3 +8,4 @@ __pycache__/
 portable.txt
 test_run.bat
 *.spec.bak
+dist-release/

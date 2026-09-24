@@ -8,7 +8,7 @@ import time
 import numpy as np
 import sounddevice as sd
 
-from common import add_cuda_dll_dirs, pick_device
+from common import add_cuda_dll_dirs, pick_stt_device
 
 SR = 16000
 BLOCK = 480                # 30 мс
@@ -105,19 +105,20 @@ class Transcriber:
         add_cuda_dll_dirs()
         from faster_whisper import WhisperModel
         name = self.cfg["stt_model"]
-        dev = pick_device(self.cfg["stt_device"])
+        dev = pick_stt_device(self.cfg["stt_device"])
         t = time.time()
         try:
             self.model = WhisperModel(name, device=dev, compute_type="float16" if dev == "cuda" else "int8")
+            # «Прогрів»: перший виклик повільний; на GPU він же перевіряє, що cuBLAS/cuDNN знайшлися.
+            list(self.model.transcribe(np.zeros(SR, np.float32), language="uk")[0])
         except Exception as e:
             if dev != "cuda":
                 raise
             logging.warning("Whisper на GPU не запустився (%s) — перемикаюсь на процесор", e)
             dev = "cpu"
             self.model = WhisperModel(name, device="cpu", compute_type="int8")
+            list(self.model.transcribe(np.zeros(SR, np.float32), language="uk")[0])
         self.device = dev
-        # «Прогрів»: перший виклик завжди повільний — робимо його одразу.
-        list(self.model.transcribe(np.zeros(SR, np.float32), language="uk")[0])
         logging.info("Whisper %s завантажено на %s за %.1f с", name, dev, time.time() - t)
 
     def transcribe(self, audio: np.ndarray) -> str:

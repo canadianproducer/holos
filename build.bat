@@ -9,6 +9,7 @@ rem  One-click build of Holos.exe
 rem    build.bat      - auto: GPU if NVIDIA present, else CPU
 rem    build.bat cpu  - for any PC (~1.5 GB)
 rem    build.bat gpu  - NVIDIA acceleration (~4.5 GB)
+rem    build.bat release - CPU build + installer for GitHub Releases
 rem  Needs only internet (and git, for one dependency).
 rem ============================================================
 
@@ -16,6 +17,8 @@ rem close running Holos.exe, otherwise dist folder is locked
 taskkill /IM Holos.exe /F >nul 2>&1
 
 set "VARIANT=%~1"
+set "RELEASE="
+if /i "%VARIANT%"=="release" ( set "VARIANT=cpu" & set "RELEASE=1" )
 if "%VARIANT%"=="" (
     where nvidia-smi >nul 2>&1 && (set "VARIANT=gpu") || (set "VARIANT=cpu")
 )
@@ -40,10 +43,11 @@ if not exist "%UV%" ( echo ПОМИЛКА: uv не встановився & goto
 
 rem --- 2. Python 3.11 venv (uv-managed Python always has tkinter) ---
 echo [2/5] Python 3.11...
-if not exist "%B%\env\Scripts\python.exe" (
-    "%UV%" venv "%B%\env" --python 3.11 --python-preference only-managed || goto :fail
+rem separate env per variant: CPU and CUDA torch cannot share one
+if not exist "%B%\env-%VARIANT%\Scripts\python.exe" (
+    "%UV%" venv "%B%\env-%VARIANT%" --python 3.11 --python-preference only-managed || goto :fail
 )
-set "PY=%B%\env\Scripts\python.exe"
+set "PY=%B%\env-%VARIANT%\Scripts\python.exe"
 "%PY%" -c "import tkinter" || ( echo ПОМИЛКА: у Python немає tkinter & goto :fail )
 
 rem --- 3. PyTorch (CPU or CUDA) ---
@@ -56,20 +60,28 @@ echo [4/5] Бібліотеки...
 
 rem --- 5. Build exe ---
 echo [5/5] Збираю Holos.exe...
-"%PY%" -m PyInstaller --noconfirm --clean holos.spec || goto :fail
+set "DISTDIR=dist"
+if defined RELEASE set "DISTDIR=dist-release"
+"%PY%" -m PyInstaller --noconfirm --clean --distpath "%DISTDIR%" holos.spec || goto :fail
 
 echo.
 echo ============================================================
-echo  ГОТОВО:  dist\Holos\Holos.exe
+echo  ГОТОВО:  %DISTDIR%\Holos\Holos.exe
 echo  Швидка перевірка без інтерфейсу:  dist\Holos\Holos.exe --selftest
 echo ============================================================
 
-rem --- Installer (if Inno Setup 6 is installed) ---
+rem --- Installer (if Inno Setup 6 is installed; "build.bat release" installs it via winget) ---
 set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
+if not exist "%ISCC%" if defined RELEASE (
+    echo Installing Inno Setup 6 via winget...
+    winget install --id JRSoftware.InnoSetup -e --silent --accept-package-agreements --accept-source-agreements
+    if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+    if exist "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
+)
 if exist "%ISCC%" (
     echo Створюю інсталятор...
-    "%ISCC%" /Q /DVariant=%VARIANT% installer.iss && echo  Інсталятор: dist\Holos-Setup-%VARIANT%.exe
+    "%ISCC%" /Q /DVariant=%VARIANT% /DDistDir=%DISTDIR%\Holos installer.iss && echo  Інсталятор готовий: тека dist\
 ) else (
     echo  (Щоб отримати Holos-Setup.exe: встановіть Inno Setup 6 і запустіть build.bat ще раз)
 )
