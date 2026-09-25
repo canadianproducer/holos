@@ -84,16 +84,18 @@ rem single source of the version number: app\common.py
 for /f tokens^=2^ delims^=^" %%v in ('findstr /b /c:"VERSION = " app\common.py') do set "APPVER=%%v"
 if exist "%ISCC%" (
     echo Створюю інсталятор...
-    "%ISCC%" /Q /DVariant=%VARIANT% /DDistDir=%DISTDIR%\Holos /DAppVersion=%APPVER% installer.iss && echo  Інсталятор готовий: тека dist\
+    "%ISCC%" /Q /DVariant=%VARIANT% /DDistDir=%DISTDIR%\Holos /DAppVersion=%APPVER% installer.iss || goto :fail
+    echo  Інсталятор готовий: тека dist\
 ) else (
-    echo  (Щоб отримати Holos-Setup.exe: встановіть Inno Setup 6 і запустіть build.bat ще раз)
+    if defined RELEASE ( echo ПОМИЛКА: Inno Setup 6 не знайдено & goto :fail )
+    echo  Щоб отримати Holos-Setup.exe: встановіть Inno Setup 6 і запустіть build.bat ще раз.
 )
 echo.
-pause
+if not defined NOPAUSE pause
 exit /b 0
 
 :fail
 echo.
 echo ЗБІРКА НЕ ВДАЛАСЯ. Скопіюйте текст вище й надішліть Claude.
-pause
+if not defined NOPAUSE pause
 exit /b 1
