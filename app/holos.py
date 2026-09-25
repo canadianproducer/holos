@@ -425,7 +425,7 @@ class App:
         from tkinter import messagebox
 
         u = self.update
-        notes = ("\n\nЩо нового:\n" + u["notes"]) if u.get("notes") else ""
+        notes = "\n\nСписок змін — на сторінці релізу на GitHub."
         if not (u.get("asset") and u.get("sha256")):  # без перевіреного файлу — лише сторінка релізу
             if messagebox.askyesno(
                 "Голос", f"Доступна нова версія {u['tag']}.{notes}\n\nВідкрити сторінку завантаження?"

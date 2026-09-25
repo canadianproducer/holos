@@ -1,10 +1,10 @@
-name: Ідея чи побажання
-description: Запропонувати нову можливість
+name: Feature request / Ідея
+description: Suggest a new feature — English or Ukrainian
 labels: [enhancement]
 body:
   - type: textarea
     id: idea
     attributes:
-      label: Що хочеться і навіщо
+      label: What would you like, and why?
     validations:
       required: true

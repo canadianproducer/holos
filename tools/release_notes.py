@@ -1,4 +1,4 @@
-"""Текст сторінки релізу: розділ версії з CHANGELOG.md + коротка інструкція встановлення.
+"""Release page text: the version's CHANGELOG.md section plus short install instructions (EN + UK).
 
 python tools/release_notes.py 0.4.0 notes.md
 """
@@ -12,23 +12,25 @@ ROOT = Path(__file__).resolve().parent.parent
 FOOTER = """
 ---
 
-**Як встановити:** завантажте `Holos-Setup-{version}.exe` нижче й запустіть. Якщо Windows покаже синє вікно
-«Windows захистила ваш комп'ютер» — натисніть «Докладніше» → «Однаково запустити».
-Під час першого запуску програма один раз завантажить мовні моделі (~3 ГБ).
-Уже встановлений «Голос» запропонує оновлення сам.
+**Install:** download `Holos-Setup-{version}.exe` below and run it. If Windows shows "Windows protected your PC",
+click **More info → Run anyway**. On first launch the app downloads the speech models once (~3 GB).
+An installed Holos offers the update by itself.
 
-Контрольні суми — у `SHA256SUMS.txt`. Повний список змін — [CHANGELOG](https://github.com/canadianproducer/holos/blob/main/CHANGELOG.md).
+**Встановлення:** завантажте `Holos-Setup-{version}.exe` нижче й запустіть. Якщо Windows покаже «Windows захистила
+ваш комп'ютер» — натисніть **«Докладніше» → «Однаково запустити»**. Під час першого запуску програма один раз
+завантажить мовні моделі (~3 ГБ). Уже встановлений «Голос» запропонує оновлення сам.
 
-Автор — Oleksandr Potapenko (Canadian Producer). Код написано в парі з AI-асистентом Claude.
+Checksums: `SHA256SUMS.txt`. Full history: [CHANGELOG](https://github.com/canadianproducer/holos/blob/main/CHANGELOG.md).
+Author: Oleksandr Potapenko (Canadian Producer). The code was written in pair with the AI assistant Claude.
 """
 
 
 def changelog_section(text: str, version: str) -> str:
-    """Вміст розділу «## [version] …» до наступного розділу «## [»."""
+    """Body of the "## [version] ..." section up to the next "## [" heading."""
     m = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
     if not m:
-        raise SystemExit(f"CHANGELOG.md: немає розділу [{version}]")
-    body = re.sub(r"^\[[^\]]+\]: .*$", "", m.group(1), flags=re.M)  # посилання внизу файлу
+        raise SystemExit(f"CHANGELOG.md has no section [{version}]")
+    body = re.sub(r"^\[[^\]]+\]: .*$", "", m.group(1), flags=re.M)  # link definitions at the end of the file
     return body.strip()
 
 
@@ -39,7 +41,7 @@ def main(version: str) -> str:
 
 if __name__ == "__main__":
     notes = main(sys.argv[1].lstrip("v"))
-    if len(sys.argv) > 2:  # у файл — завжди UTF-8, незалежно від кодування консолі Windows
+    if len(sys.argv) > 2:  # write UTF-8 regardless of the Windows console code page
         Path(sys.argv[2]).write_text(notes, encoding="utf-8")
     else:
         sys.stdout.reconfigure(encoding="utf-8")

@@ -1,49 +1,53 @@
-# Як ми розробляємо «Голос»
+# Contributing to Holos
 
-## Гілки
-- `main` — завжди робочий код. Напряму в `main` не комітимо.
-- Кожна зміна — окрема гілка від `main`:
-  `fix/…` (виправлення), `feat/…` (нове), `docs/…` (документація), `chore/…` (збірка, скрипти).
-- Одна гілка = одна логічна зміна. Готово → злиття в `main` через `git merge --no-ff`
-  (або Pull Request на GitHub), гілку видаляємо.
+Issues and pull requests are welcome, in English or Ukrainian.
 
-## Коміти
-Формат [Conventional Commits](https://www.conventionalcommits.org/):
-`fix(autostart): …`, `feat(stt): …`, `docs: …`, `chore(release): …`.
-Перший рядок — коротко що змінилось, далі — чому.
+## Branches
+- `main` always holds working code. Nothing is committed to `main` directly.
+- Every change gets its own branch from `main`:
+  `fix/…` (bug fix), `feat/…` (feature), `docs/…`, `test/…`, `build/…`, `ci/…`, `chore/…`.
+- One branch = one logical change. When done, merge into `main` with `git merge --no-ff`
+  (or a pull request on GitHub) and delete the branch.
 
-## Версії (SemVer: MAJOR.MINOR.PATCH)
-- **PATCH** (0.3.0 → 0.3.1) — лише виправлення, без нових можливостей.
-- **MINOR** (0.3.1 → 0.4.0) — нові можливості, сумісні зі старими налаштуваннями.
-- **MAJOR** (0.x → 1.0.0, 1.x → 2.0.0) — несумісні зміни (налаштування, формат даних).
-  Поки версія 0.x, проєкт вважається ранньою розробкою.
+## Commits
+[Conventional Commits](https://www.conventionalcommits.org/): `fix(autostart): …`, `feat(stt): …`, `docs: …`,
+`chore(release): …`. The first line says what changed; the body explains why.
 
-Номер версії записано в одному місці — `app/common.py` (`VERSION`); `build.bat` передає його в інсталятор.
+## Versioning (SemVer: MAJOR.MINOR.PATCH)
+- **PATCH** (0.4.0 → 0.4.1) — bug fixes only.
+- **MINOR** (0.4.1 → 0.5.0) — new features, compatible with existing settings and data.
+- **MAJOR** (0.x → 1.0.0, 1.x → 2.0.0) — breaking changes (settings, data format).
+  While the version is 0.x the project is in early development.
 
-## Випуск
-1. Усі зміни злиті в `main`; у `CHANGELOG.md` розділ `[Unreleased]` описує їх; CI зелений.
-2. Гілка `release/X.Y.Z`: оновити `VERSION` в `app/common.py`, перенести `[Unreleased]` у `[X.Y.Z] — дата`.
-   Коміт `chore(release): X.Y.Z` → злиття в `main` → анотований тег `vX.Y.Z`.
-3. `release.bat` — перевіряє версію, розділ у CHANGELOG і тег, відправляє `main` і тег на GitHub.
-4. Далі все робить GitHub Actions (`release.yml`): збірка на чистій Windows-машині тим самим `build.bat`,
-   модульні тести, smoke-тест exe, тихе встановлення/запуск/видалення, `SHA256SUMS.txt`,
-   публікація релізу з текстом із CHANGELOG. Якщо хоч одна перевірка не пройшла — релізу не буде.
-5. Уже випущений тег не переписуємо. Помилка в релізі → наступна PATCH-версія.
+The version lives in one place: `VERSION` in `app/common.py`. The installer, the exe properties and CI read it from there.
 
-Тестова збірка без публікації: GitHub → Actions → Release → Run workflow (файл — у Artifacts).
+## Releasing
+1. All changes are merged into `main`, described under `[Unreleased]` in `CHANGELOG.md`, and CI is green.
+2. On a `release/X.Y.Z` branch: bump `VERSION` in `app/common.py`, rename `[Unreleased]` to `[X.Y.Z] - date`.
+   Commit `chore(release): X.Y.Z` → merge into `main` → annotated tag `vX.Y.Z` (`git tag -a vX.Y.Z -m "Holos X.Y.Z"`).
+3. `release.bat` verifies the version, the CHANGELOG section and the tag, then pushes `main` and the tag.
+4. GitHub Actions (`release.yml`) does the rest: builds with the same `build.bat` on a clean Windows runner, runs the
+   unit tests, smoke-tests the exe, installs/runs/uninstalls the installer silently, writes `SHA256SUMS.txt` and
+   publishes the release with notes taken from `CHANGELOG.md`. If any check fails, nothing is published.
+5. A published tag is never rewritten. A broken release is fixed by the next PATCH version.
 
-## Залежності
-- `requirements.txt` — прямі залежності з точними версіями (git-архіви — за хешем коміту).
-- `requirements.lock` — повний знімок усіх пакетів, з якими зібрано реліз; `build.bat` ставить саме його.
-- Оновлення бібліотек — окрема гілка `build/…`: змінити `requirements.txt`, зібрати, перевірити,
-  перегенерувати `requirements.lock`.
+A test build without publishing: GitHub → Actions → Release → Run workflow (the installer appears under Artifacts).
 
-## Перевірки
-Локально: `pip install -r requirements-dev.txt`, потім `pytest`, `ruff check .`, `ruff format --check .`
-(або один раз `pre-commit install` — і це робиться перед кожним комітом).
+## Dependencies
+- `requirements.txt` — direct dependencies with exact versions (git archives pinned by commit).
+- `requirements.lock` — the full set of packages a release is built with; `build.bat` installs exactly this.
+- To update libraries: a `build/…` branch — change `requirements.txt`, build, test, regenerate `requirements.lock`.
 
-GitHub Actions (`.github/workflows/ci.yml`) на кожен push у `main` і кожен Pull Request:
-ruff (помилки, стиль, безпека), тести на Linux і Windows, розділ у `CHANGELOG.md` для поточної `VERSION`.
-Перед випуском додатково вручну: `Holos.exe --selftest`, диктування й читання на реальному ПК.
+## Checks
+Locally: `pip install -r requirements-dev.txt`, then `pytest`, `ruff check .`, `ruff format --check .`
+(or run `pre-commit install` once and they run before every commit).
 
-Кожна зміна поведінки — з тестом, якщо логіку можна перевірити без мікрофона й моделей.
+GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and every pull request: ruff (bugs, style,
+security), tests on Linux and Windows, and a `CHANGELOG.md` section for the current `VERSION`.
+Before a release, also by hand: `Holos.exe --selftest`, dictation and read-aloud on a real PC.
+
+Every behaviour change comes with a test whenever the logic can be checked without a microphone or models.
+
+## Language
+Documentation and commit messages are in English. The app's interface is in Ukrainian; code comments are mostly
+Ukrainian for historical reasons — new code may use either language.

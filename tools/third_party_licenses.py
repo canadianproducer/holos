@@ -1,13 +1,13 @@
-"""Список сторонніх Python-пакетів у збірці з їхніми ліцензіями (для THIRD_PARTY_LICENSES.md у теці програми).
+"""Lists the third-party Python packages in a build with their licenses (THIRD_PARTY_LICENSES.md in the app folder).
 
-Запускається інтерпретатором середовища збірки (build.bat):
+Run with the build environment's interpreter (build.bat):
     python tools/third_party_licenses.py > dist/Holos/THIRD_PARTY_LICENSES.md
 """
 
 import sys
 from importlib.metadata import distributions
 
-# Інструменти збірки — у програму не потрапляють
+# Build tools — not shipped with the app
 BUILD_ONLY = {
     "pyinstaller",
     "pyinstaller-hooks-contrib",
@@ -27,7 +27,7 @@ def license_of(meta) -> str:
     if classifiers:
         return ", ".join(classifiers)
     lic = (meta.get("License") or "").strip().splitlines()
-    return lic[0][:60] if lic else "див. сторінку проєкту"
+    return lic[0][:60] if lic else "see project page"
 
 
 def main() -> str:
@@ -41,12 +41,12 @@ def main() -> str:
         )
         rows[name.lower()] = (name, d.version, license_of(d.metadata), url)
     out = [
-        "# Сторонні компоненти «Голосу»",
+        "# Holos third-party components",
         "",
-        "Пакети Python, що входять у цю збірку. Повні тексти ліцензій — на сторінках проєктів.",
-        "Моделі й голоси — див. THIRD_PARTY_NOTICES.md у репозиторії.",
+        "Python packages included in this build. Full license texts are on the project pages.",
+        "Models and voices: see THIRD_PARTY_NOTICES.md.",
         "",
-        "| Пакет | Версія | Ліцензія | Сайт |",
+        "| Package | Version | License | Homepage |",
         "|---|---|---|---|",
     ]
     out += [f"| {n} | {v} | {lic} | {u} |" for n, v, lic, u in (rows[k] for k in sorted(rows))]

@@ -1,4 +1,4 @@
-# torch/torchaudio ставляться окремо (CPU або CUDA) — див. build.bat
+# torch/torchaudio are installed separately (CPU or CUDA build) — see build.bat
 numpy==1.26.4
 soundfile==0.14.0
 sounddevice==0.5.6
