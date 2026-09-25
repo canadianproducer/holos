@@ -426,7 +426,7 @@ class App:
 
         u = self.update
         notes = ("\n\nЩо нового:\n" + u["notes"]) if u.get("notes") else ""
-        if not u.get("asset"):
+        if not (u.get("asset") and u.get("sha256")):  # без перевіреного файлу — лише сторінка релізу
             if messagebox.askyesno(
                 "Голос", f"Доступна нова версія {u['tag']}.{notes}\n\nВідкрити сторінку завантаження?"
             ):
@@ -446,9 +446,7 @@ class App:
 
         u = self.update
         try:
-            path = updater.download(
-                u["asset"], u["size"], lambda pct: self.set_state("loading", f"Завантажую оновлення… {pct:.0f}%")
-            )
+            path = updater.download(u, lambda pct: self.set_state("loading", f"Завантажую оновлення… {pct:.0f}%"))
             self.set_state("loading", "Встановлюю оновлення…")
             log.info("Оновлення: запускаю %s", path)
             updater.run_installer(path)
