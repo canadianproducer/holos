@@ -13,7 +13,7 @@
 #define AppName "Голос"
 ; версія передається з build.bat (береться з app\common.py)
 #ifndef AppVersion
-  #define AppVersion "0.0.0-dev"
+  #define AppVersion "0.0.0"
 #endif
 
 [Setup]
@@ -21,6 +21,13 @@ AppId={{6C1E2B7A-4F4B-4E8B-9C2A-5A1D0C0F0001}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Canadian Producer
+AppCopyright=© 2026 Oleksandr Potapenko · GPL-3.0
+AppSupportURL=https://github.com/canadianproducer/holos/issues
+VersionInfoVersion={#AppVersion}
+VersionInfoCompany=Canadian Producer
+VersionInfoProductName=Голос (Holos)
+VersionInfoDescription=Голос — інсталятор
+SetupLogging=yes
 DefaultDirName={localappdata}\Programs\Holos
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
@@ -66,10 +73,23 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent
 ; після тихого оновлення з програми — запускаємо нову версію
-Filename: "{app}\Holos.exe"; Flags: nowait; Check: WizardSilent
+Filename: "{app}\Holos.exe"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Holos.vbs"
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM Holos.exe /F"; Flags: runhidden; RunOnceId: "KillHolos"
+
+[Code]
+// Після тихого оновлення з програми перезапускаємо «Голос».
+// /NOLAUNCH — не запускати (автоматичні перевірки в CI).
+function ShouldRelaunch: Boolean;
+var
+  i: Integer;
+begin
+  Result := WizardSilent;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/NOLAUNCH') = 0 then
+      Result := False;
+end;

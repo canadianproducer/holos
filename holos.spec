@@ -1,6 +1,44 @@
 # PyInstaller: збірка Holos.exe (тека dist/Holos).  Запуск: pyinstaller holos.spec
+import re
 import sys
+
 from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.win32.versioninfo import (
+    FixedFileInfo,
+    StringFileInfo,
+    StringStruct,
+    StringTable,
+    VarFileInfo,
+    VarStruct,
+    VSVersionInfo,
+)
+
+# Версія — з app/common.py (єдине джерело); потрапляє у «Властивості» Holos.exe.
+VERSION = re.search(r'^VERSION = "(.+)"', open("app/common.py", encoding="utf-8").read(), re.M).group(1)
+_nums = (*(int(x) for x in re.findall(r"\d+", VERSION)[:3]), 0)
+version_info = VSVersionInfo(
+    ffi=FixedFileInfo(filevers=_nums, prodvers=_nums),
+    kids=[
+        StringFileInfo(
+            [
+                StringTable(
+                    "042204B0",
+                    [
+                        StringStruct("CompanyName", "Canadian Producer"),
+                        StringStruct("FileDescription", "Голос — диктування і читання вголос"),
+                        StringStruct("FileVersion", VERSION),
+                        StringStruct("InternalName", "Holos"),
+                        StringStruct("LegalCopyright", "© 2026 Oleksandr Potapenko · GPL-3.0"),
+                        StringStruct("OriginalFilename", "Holos.exe"),
+                        StringStruct("ProductName", "Голос (Holos)"),
+                        StringStruct("ProductVersion", VERSION),
+                    ],
+                )
+            ]
+        ),
+        VarFileInfo([VarStruct("Translation", [0x0422, 1200])]),
+    ],
+)
 
 datas, binaries, hiddenimports = [("assets", "assets")], [], []
 
@@ -38,6 +76,6 @@ exe = EXE(
     icon="assets/holos.ico",
     console=False,          # без чорного вікна
     upx=False,
-    version=None,
+    version=version_info,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="Holos", upx=False)
