@@ -120,15 +120,51 @@ VERBALIZER_MODEL = "skypro1111/m2m100-ukr-verbalization-ct2"
 VERBALIZER_TOKENIZER = "skypro1111/m2m100-ukr-verbalization"
 
 
+def _type_ok(default, value) -> bool:
+    if default is None:
+        return True
+    if isinstance(default, bool):
+        return isinstance(value, bool)
+    if isinstance(default, (int, float)):
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, type(default))
+
+
+def validate_config(loaded: dict) -> dict:
+    """Значення неправильного типу (наприклад "speed": "швидко") відкидаємо — лишається стандартне.
+    Невідомі ключі зберігаємо: їх могла записати новіша версія програми."""
+    good = {}
+    for k, v in loaded.items():
+        if k in DEFAULTS and not _type_ok(DEFAULTS[k], v):
+            logging.warning("config.json: «%s» має неправильний тип (%r) — використовую стандартне значення", k, v)
+            continue
+        good[k] = v
+    return good
+
+
 class Config:
-    def __init__(self):
-        self._lock = threading.Lock()
+    """Налаштування: config.json поверх DEFAULTS.
+
+    - зіпсований файл не ламає запуск і не губиться: його копія лишається як config.json.broken;
+    - запис атомарний (тимчасовий файл + заміна): збій посеред запису не зіпсує налаштування.
+    """
+
+    def __init__(self, path: Path = CONFIG_PATH):
+        self.path = path
+        self._lock = threading.RLock()
         self.data = dict(DEFAULTS)
-        if CONFIG_PATH.exists():
+        if path.exists():
             try:
-                self.data.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
-            except Exception as e:  # зіпсований файл не повинен ламати запуск
-                logging.error("config.json не читається (%s) — використовую стандартні", e)
+                loaded = json.loads(path.read_text(encoding="utf-8-sig"))
+                if not isinstance(loaded, dict):
+                    raise ValueError("очікувався об'єкт JSON")
+                self.data.update(validate_config(loaded))
+            except (OSError, ValueError) as e:
+                logging.error("config.json не читається (%s) — використовую стандартні, копія: config.json.broken", e)
+                try:
+                    path.replace(path.with_name(path.name + ".broken"))
+                except OSError:
+                    pass
         self.save()
 
     def __getitem__(self, k):
@@ -140,7 +176,13 @@ class Config:
             self.save()
 
     def save(self):
-        CONFIG_PATH.write_text(json.dumps(self.data, ensure_ascii=False, indent=2), encoding="utf-8")
+        with self._lock:
+            tmp = self.path.with_name(self.path.name + ".tmp")
+            try:
+                tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=2), encoding="utf-8")
+                os.replace(tmp, self.path)
+            except OSError as e:
+                logging.error("config.json не збережено: %s", e)
 
 
 LOG_MAX_BYTES = 2 * 1024 * 1024
