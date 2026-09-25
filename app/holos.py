@@ -1,7 +1,4 @@
 """Голос — диктування і читання вслух для Windows. Точка входу."""
-import common  # noqa: F401  (перший імпорт: задає теки моделей)
-from common import VERSION, RES_DIR, Config, CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, ROOT, setup_logging
-
 import io
 import logging
 import math
@@ -14,7 +11,9 @@ import time
 import tkinter as tk
 import wave
 
+import common  # noqa: F401  (до будь-яких ML-бібліотек: задає теки моделей і змінні HF_*)
 import winutil
+from common import CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, RES_DIR, ROOT, VERSION, Config, setup_logging
 
 setup_logging()
 log = logging.getLogger("holos")
@@ -418,6 +417,7 @@ class App:
     def run_tray(self):
         import pystray
         from PIL import Image
+
         from tts import list_uk_voices
 
         try:
@@ -426,10 +426,10 @@ class App:
             img = Image.new("RGBA", (64, 64), (0, 87, 183, 255))
 
         cfg = self.cfg
-        M, I = pystray.Menu, pystray.MenuItem
+        M, Item = pystray.Menu, pystray.MenuItem
 
         def radio(key, value, label):
-            return I(label, lambda: cfg.set(key, value), checked=lambda _: cfg[key] == value, radio=True)
+            return Item(label, lambda: cfg.set(key, value), checked=lambda _: cfg[key] == value, radio=True)
 
         def open_path(p):
             def _open():
@@ -437,41 +437,41 @@ class App:
                     if not p.exists():
                         p.parent.mkdir(parents=True, exist_ok=True)
                         p.write_text("", encoding="utf-8")
-                    os.startfile(str(p))
+                    os.startfile(str(p))  # noqa: S606 — відкрити файл у програмі за замовчуванням
                 except Exception:
                     log.exception("Не вдалося відкрити %s", p)
             return _open
 
         voices = list_uk_voices()
         menu = M(
-            I(lambda _: (f"Стан: готовий ({(self.transcriber.device or '').upper()})" if self.ready.is_set()
+            Item(lambda _: (f"Стан: готовий ({(self.transcriber.device or '').upper()})" if self.ready.is_set()
                         else "Стан: завантаження…") + f"  ·  v{VERSION}", None, enabled=False),
             M.SEPARATOR,
-            I("Мова диктування", M(radio("stt_language", "auto", "Автовизначення"),
+            Item("Мова диктування", M(radio("stt_language", "auto", "Автовизначення"),
                                    radio("stt_language", "uk", "Українська"),
                                    radio("stt_language", "ru", "Русский"),
                                    radio("stt_language", "en", "English"))),
-            I("Голос читання (укр.)", M(*[radio("uk_voice", v, v) for v in voices]) if voices else M(
-                I("немає голосів", None, enabled=False))),
-            I("Голос читання (рус./англ.)", M(radio("ru_voice", "female", "Жіночий (рус.)"),
+            Item("Голос читання (укр.)", M(*[radio("uk_voice", v, v) for v in voices]) if voices else M(
+                Item("немає голосів", None, enabled=False))),
+            Item("Голос читання (рус./англ.)", M(radio("ru_voice", "female", "Жіночий (рус.)"),
                                              radio("ru_voice", "male", "Чоловічий (рус.)"),
                                              radio("en_voice", "female", "Female (EN)"),
                                              radio("en_voice", "male", "Male (EN)"))),
-            I("Розумне очищення (Ollama)", lambda: cfg.set("cleanup", "off" if cfg["cleanup"] != "off" else "auto"),
+            Item("Розумне очищення (Ollama)", lambda: cfg.set("cleanup", "off" if cfg["cleanup"] != "off" else "auto"),
               checked=lambda _: cfg["cleanup"] != "off"),
-            I("Швидкість читання", M(*[radio("speed", s, f"{s:.1f}×") for s in (0.8, 0.9, 1.0, 1.1, 1.2)])),
-            I(lambda _: f"⬆ Оновити до {self.update['tag']}" if self.update else "",
+            Item("Швидкість читання", M(*[radio("speed", s, f"{s:.1f}×") for s in (0.8, 0.9, 1.0, 1.1, 1.2)])),
+            Item(lambda _: f"⬆ Оновити до {self.update['tag']}" if self.update else "",
               lambda: setattr(self, "ask_update", True), visible=lambda _: bool(self.update)),
-            I("⚡ Увімкнути прискорення NVIDIA", self.install_gpu_pack, visible=lambda _: self.gpu_pack_offer()),
+            Item("⚡ Увімкнути прискорення NVIDIA", self.install_gpu_pack, visible=lambda _: self.gpu_pack_offer()),
             M.SEPARATOR,
-            I("Скопіювати останню диктовку", lambda: winutil.clip_set(self.last_text),
+            Item("Скопіювати останню диктовку", lambda: winutil.clip_set(self.last_text),
               enabled=lambda _: bool(self.last_text)),
-            I("Історія диктувань", open_path(HISTORY_PATH)),
-            I("Налаштування (config.json)", open_path(CONFIG_PATH)),
-            I("Журнал помилок", open_path(LOGS / "holos.log")),
-            I("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_enabled()),
+            Item("Історія диктувань", open_path(HISTORY_PATH)),
+            Item("Налаштування (config.json)", open_path(CONFIG_PATH)),
+            Item("Журнал помилок", open_path(LOGS / "holos.log")),
+            Item("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_enabled()),
             M.SEPARATOR,
-            I("Вийти", self.quit),
+            Item("Вийти", self.quit),
         )
         self.tray = pystray.Icon("holos", img, "Голос — завантаження…", menu)
         self.update_tray_title()
@@ -573,6 +573,7 @@ def _ollama_running() -> bool:
 def first_run_setup() -> bool:
     """Вікно першого запуску: завантаження моделей з прогресом."""
     from tkinter import ttk
+
     from download_models import STEPS, download_all
 
     win = tk.Tk()
@@ -597,8 +598,8 @@ def first_run_setup() -> bool:
 
     # --- необов'язкові доповнення ---
     import cuda_pack
-    from common import cuda_libs_available
     from cleanup import Cleaner
+    from common import cuda_libs_available
     extras = ttk.Frame(frm)
     extras.pack(anchor="w", fill="x", pady=(10, 0))
     var_gpu = tk.BooleanVar(value=False)

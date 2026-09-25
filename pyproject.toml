@@ -1,0 +1,42 @@
+[project]
+name = "holos"
+dynamic = ["version"]
+description = "Offline dictation and read-aloud for Windows, Ukrainian-first"
+readme = "README.md"
+license = "GPL-3.0-only"
+authors = [{ name = "Oleksandr Potapenko (Canadian Producer)" }]
+requires-python = ">=3.11,<3.12"
+
+[project.urls]
+Homepage = "https://github.com/canadianproducer/holos"
+Issues = "https://github.com/canadianproducer/holos/issues"
+Changelog = "https://github.com/canadianproducer/holos/blob/main/CHANGELOG.md"
+
+# Застосунок, не бібліотека: збирається PyInstaller-ом (holos.spec), тут — лише налаштування інструментів.
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["app", "tests", "tools"]
+extend-exclude = [".build", "build", "dist", "dist-release"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "S"]
+ignore = [
+  "E501",   # довгі рядки — форматер, а довгі українські рядки лишаємо як є
+  "S101",   # assert у тестах
+  "S110",   # try/except/pass — свідомо у звуках/буфері обміну (не можна ламати диктування)
+  "S603",   # subprocess з фіксованими аргументами (інсталятор оновлення)
+  "S310",   # urlopen: лише https:// і локальна Ollama, перевіряється в коді
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["common", "stt", "tts", "cleanup", "cuda_pack", "download_models", "holos", "hotkeys", "updater", "winutil"]
+
+[tool.ruff.lint.per-file-ignores]
+"holos.spec" = ["F821"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["app"]
+addopts = "-q"

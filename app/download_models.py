@@ -1,12 +1,21 @@
 """Завантаження моделей у теку даних (один раз, при першому запуску)."""
-import common  # noqa: F401
-from common import (PIPER_DIR, PIPER_VOICES, READY_FLAG, STYLETTS_REPO, STYLETTS_VOICES_SPACE,
-                    VERBALIZER_MODEL, VERBALIZER_TOKENIZER, VOICES_DIR, Config)
-
 import logging
 import shutil
 import sys
 from pathlib import Path
+
+import common  # noqa: F401
+from common import (
+    PIPER_DIR,
+    PIPER_VOICES,
+    READY_FLAG,
+    STYLETTS_REPO,
+    STYLETTS_VOICES_SPACE,
+    VERBALIZER_MODEL,
+    VERBALIZER_TOKENIZER,
+    VOICES_DIR,
+    Config,
+)
 
 STEPS = [
     "Розпізнавання мовлення (Whisper, ~1.6 ГБ)",

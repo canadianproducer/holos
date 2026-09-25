@@ -9,8 +9,15 @@ from unicodedata import normalize
 import numpy as np
 import sounddevice as sd
 
-from common import (PIPER_DIR, PIPER_VOICES, STYLETTS_REPO, VERBALIZER_MODEL, VERBALIZER_TOKENIZER,
-                    VOICES_DIR, pick_device)
+from common import (
+    PIPER_DIR,
+    PIPER_VOICES,
+    STYLETTS_REPO,
+    VERBALIZER_MODEL,
+    VERBALIZER_TOKENIZER,
+    VOICES_DIR,
+    pick_device,
+)
 
 UK_SR = 24000
 
@@ -86,7 +93,7 @@ class UkEngine:
         import torch
         from ipa_uk import ipa
         from styletts2_inference.models import StyleTTS2
-        from ukrainian_word_stress import StressSymbol, Stressifier
+        from ukrainian_word_stress import Stressifier, StressSymbol
         self.torch = torch
         self.ipa = ipa
         self.acute = StressSymbol.CombiningAcuteAccent

@@ -5,10 +5,9 @@
 їх називає інакше).
 """
 import logging
+import queue
 import threading
 import time
-
-import queue
 
 import keyboard
 
