@@ -68,13 +68,11 @@ Pull requests і ідеї — вітаються!
 
 ## Автор
 
-**Alex Potapenko ([Canadian Producer](https://github.com/canadianproducer))**
+**Oleksandr Potapenko ([Canadian Producer](https://github.com/canadianproducer))**
 
 ## Як це зроблено
 
 Код написано в парі з AI-асистентом Claude — від першої ідеї до робочої програми, у діалозі: автор ставив задачі, тестував на своєму комп'ютері й ухвалював рішення, асистент писав і налагоджував код.
-
-<sub>Проєкт незалежний і не пов'язаний з Anthropic.</sub>
 
 ## Подяки
 
@@ -105,4 +103,4 @@ Pull requests і ідеї — вітаються!
 
 Download `Holos-Setup.exe` from [Releases](../../releases/latest). First launch downloads models (~3 GB) once.
 
-Made by **Alex Potapenko (Canadian Producer)**. The code was written in pair with the AI assistant Claude. This is an independent project, not affiliated with Anthropic. Licensed under GPL-3.0.
+Made by **Oleksandr Potapenko (Canadian Producer)**. The code was written in pair with the AI assistant Claude. Licensed under GPL-3.0.
