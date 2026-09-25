@@ -1,4 +1,5 @@
 """Оновлення через GitHub Releases: перевірка, завантаження і тихе встановлення нового Holos-Setup.exe."""
+
 import json
 import logging
 import os
@@ -19,19 +20,30 @@ def check(repo: str):
     if not repo:
         return None
     try:
-        req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases/latest",
-                                     headers={"Accept": "application/vnd.github+json",
-                                              "User-Agent": f"Holos/{VERSION}"})
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/releases/latest",
+            headers={"Accept": "application/vnd.github+json", "User-Agent": f"Holos/{VERSION}"},
+        )
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.loads(r.read().decode("utf-8"))
         tag = data.get("tag_name", "")
         if _ver(tag) <= _ver(VERSION):
             return None
-        asset = next((a for a in data.get("assets", [])
-                      if a["name"].lower().startswith("holos-setup") and a["name"].lower().endswith(".exe")), None)
-        return {"tag": tag, "page": data.get("html_url") or f"https://github.com/{repo}/releases/latest",
-                "asset": asset["browser_download_url"] if asset else None,
-                "size": asset["size"] if asset else 0, "notes": (data.get("body") or "")[:600]}
+        asset = next(
+            (
+                a
+                for a in data.get("assets", [])
+                if a["name"].lower().startswith("holos-setup") and a["name"].lower().endswith(".exe")
+            ),
+            None,
+        )
+        return {
+            "tag": tag,
+            "page": data.get("html_url") or f"https://github.com/{repo}/releases/latest",
+            "asset": asset["browser_download_url"] if asset else None,
+            "size": asset["size"] if asset else 0,
+            "notes": (data.get("body") or "")[:600],
+        }
     except Exception as e:
         logging.info("Оновлення: перевірка не вдалася (%s)", e)
     return None
@@ -55,5 +67,8 @@ def download(url, size, progress=lambda pct: None):
 
 def run_installer(path):
     """Тихе встановлення поверх старої версії; інсталятор сам перезапустить програму."""
-    subprocess.Popen([path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
-                     close_fds=True, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0))
+    subprocess.Popen(
+        [path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
+        close_fds=True,
+        creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+    )

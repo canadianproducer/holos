@@ -1,4 +1,5 @@
 """Запис із мікрофона та розпізнавання мовлення (faster-whisper)."""
+
 import collections
 import logging
 import re
@@ -11,15 +12,23 @@ import sounddevice as sd
 from common import add_cuda_dll_dirs, pick_stt_device
 
 SR = 16000
-BLOCK = 480                # 30 мс
-PREROLL_SEC = 0.6          # стільки звуку «до натискання» зберігаємо, коли мікрофон завжди відкритий
-TAIL_SEC = 0.3             # дописуємо після відпускання, щоб не обрізати останнє слово
+BLOCK = 480  # 30 мс
+PREROLL_SEC = 0.6  # стільки звуку «до натискання» зберігаємо, коли мікрофон завжди відкритий
+TAIL_SEC = 0.3  # дописуємо після відпускання, щоб не обрізати останнє слово
 
 # Whisper на тиші/шумі іноді «вигадує» ці фрази — відкидаємо їх.
 HALLUCINATIONS = [
-    r"дякую за перегляд", r"дякуємо за перегляд", r"підписуйтесь на канал", r"спасибо за просмотр",
-    r"продолжение следует", r"субтитры (сделал|создавал|делал)", r"редактор субтитров",
-    r"thanks for watching", r"thank you for watching", r"subscribe to", r"amara\.org",
+    r"дякую за перегляд",
+    r"дякуємо за перегляд",
+    r"підписуйтесь на канал",
+    r"спасибо за просмотр",
+    r"продолжение следует",
+    r"субтитры (сделал|создавал|делал)",
+    r"редактор субтитров",
+    r"thanks for watching",
+    r"thank you for watching",
+    r"subscribe to",
+    r"amara\.org",
     r"^\W*$",
 ]
 _HALL = re.compile("|".join(HALLUCINATIONS), re.I)
@@ -52,8 +61,9 @@ class Recorder:
 
     def _open(self):
         if self._stream is None:
-            self._stream = sd.InputStream(samplerate=SR, channels=1, dtype="float32", blocksize=BLOCK,
-                                          device=self._device(), callback=self._cb)
+            self._stream = sd.InputStream(
+                samplerate=SR, channels=1, dtype="float32", blocksize=BLOCK, device=self._device(), callback=self._cb
+            )
             self._stream.start()
 
     def _close(self):
@@ -66,7 +76,7 @@ class Recorder:
 
     def _cb(self, indata, frames, t, status):
         block = indata[:, 0].copy()
-        self.level = float(np.sqrt(np.mean(block ** 2)))
+        self.level = float(np.sqrt(np.mean(block**2)))
         with self._lock:
             if self._recording:
                 self._frames.append(block)
@@ -104,6 +114,7 @@ class Transcriber:
     def load(self):
         add_cuda_dll_dirs()
         from faster_whisper import WhisperModel
+
         name = self.cfg["stt_model"]
         dev = pick_stt_device(self.cfg["stt_device"])
         t = time.time()
@@ -139,15 +150,17 @@ class Transcriber:
             prompt = (prompt + " " + vocab + ".").strip()
         t = time.time()
         segments, info = self.model.transcribe(
-            audio, language=lang, beam_size=5, vad_filter=True,
+            audio,
+            language=lang,
+            beam_size=5,
+            vad_filter=True,
             vad_parameters={"min_silence_duration_ms": 700, "speech_pad_ms": 300},
             condition_on_previous_text=False,
             initial_prompt=prompt or None,
             without_timestamps=True,
         )
         text = " ".join(s.text.strip() for s in segments).strip()
-        logging.info("Розпізнано (%s, %.1f с аудіо, %.2f с): %s",
-                     info.language, audio.size / SR, time.time() - t, text)
+        logging.info("Розпізнано (%s, %.1f с аудіо, %.2f с): %s", info.language, audio.size / SR, time.time() - t, text)
         return self.clean(text)
 
     def clean(self, text: str) -> str:

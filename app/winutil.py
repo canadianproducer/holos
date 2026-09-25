@@ -4,6 +4,7 @@
 незалежно від розкладки (українська/російська/англійська). Бібліотека
 `keyboard` з іменами літер ламається на кириличних розкладках.
 """
+
 import ctypes
 import logging
 import os
@@ -22,18 +23,30 @@ INPUT_KEYBOARD = 1
 
 if IS_WIN:
     from ctypes import wintypes
+
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
     ULONG_PTR = ctypes.c_size_t
 
     class KEYBDINPUT(ctypes.Structure):
-        _fields_ = [("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
-                    ("time", wintypes.DWORD), ("dwExtraInfo", ULONG_PTR)]
+        _fields_ = [
+            ("wVk", wintypes.WORD),
+            ("wScan", wintypes.WORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ULONG_PTR),
+        ]
 
     class MOUSEINPUT(ctypes.Structure):
-        _fields_ = [("dx", wintypes.LONG), ("dy", wintypes.LONG), ("mouseData", wintypes.DWORD),
-                    ("dwFlags", wintypes.DWORD), ("time", wintypes.DWORD), ("dwExtraInfo", ULONG_PTR)]
+        _fields_ = [
+            ("dx", wintypes.LONG),
+            ("dy", wintypes.LONG),
+            ("mouseData", wintypes.DWORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ULONG_PTR),
+        ]
 
     class _U(ctypes.Union):
         _fields_ = [("ki", KEYBDINPUT), ("mi", MOUSEINPUT)]
@@ -73,8 +86,11 @@ def release_modifiers():
     щоб наш Ctrl+V не перетворився на Ctrl+Shift+V."""
     if not IS_WIN:
         return
-    ups = [_key(vk, True) for vk in (VK_LSHIFT, VK_RSHIFT, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN)
-           if user32.GetAsyncKeyState(vk) & 0x8000]
+    ups = [
+        _key(vk, True)
+        for vk in (VK_LSHIFT, VK_RSHIFT, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN)
+        if user32.GetAsyncKeyState(vk) & 0x8000
+    ]
     if ups:
         arr = (INPUT * len(ups))(*ups)
         user32.SendInput(len(ups), arr, ctypes.sizeof(INPUT))
@@ -83,8 +99,10 @@ def release_modifiers():
 def modifiers_down() -> bool:
     if not IS_WIN:
         return False
-    return any(user32.GetAsyncKeyState(vk) & 0x8000 for vk in
-               (VK_LCONTROL, VK_RCONTROL, VK_LSHIFT, VK_RSHIFT, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN))
+    return any(
+        user32.GetAsyncKeyState(vk) & 0x8000
+        for vk in (VK_LCONTROL, VK_RCONTROL, VK_LSHIFT, VK_RSHIFT, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN)
+    )
 
 
 def wait_modifiers_released(timeout=1.5):
@@ -185,8 +203,13 @@ def single_instance(name="HolosVoiceApp") -> bool:
 
 # --- Вікно-плашка без фокуса -------------------------------------------------
 GWL_EXSTYLE = -20
-WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_EX_LAYERED = \
-    0x80, 0x08000000, 0x8, 0x20, 0x80000
+WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_EX_LAYERED = (
+    0x80,
+    0x08000000,
+    0x8,
+    0x20,
+    0x80000,
+)
 SW_HIDE, SW_SHOWNOACTIVATE = 0, 4
 
 
@@ -200,8 +223,11 @@ def make_overlay(hwnd):
     get.argtypes = (wintypes.HWND, ctypes.c_int)
     setl.argtypes = (wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t)
     style = get(hwnd, GWL_EXSTYLE)
-    setl(hwnd, GWL_EXSTYLE, style | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST
-         | WS_EX_TRANSPARENT | WS_EX_LAYERED)
+    setl(
+        hwnd,
+        GWL_EXSTYLE,
+        style | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED,
+    )
 
 
 def show_no_activate(hwnd, show: bool):

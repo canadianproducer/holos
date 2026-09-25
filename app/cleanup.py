@@ -4,6 +4,7 @@
 «в середу»), розставляє розділові знаки. Мови НЕ перекладає: суміш укр/рус/англ
 лишається сумішшю. Якщо Ollama не запущена — тихо повертаємо сирий текст.
 """
+
 import json
 import logging
 import time
@@ -18,7 +19,7 @@ SYSTEM = (
     "stays mixed exactly as spoken. English terms stay in English.\n"
     "3. Remove filler words and hesitations (e-e, m-m, ну, типа, как бы, коротше, uh, um, like).\n"
     "4. Remove false starts, stutters and repeated words.\n"
-    "5. When the speaker corrects themselves (\"no, I mean\", \"вернее\", \"тобто ні\", \"точнее\"), "
+    '5. When the speaker corrects themselves ("no, I mean", "вернее", "тобто ні", "точнее"), '
     "keep ONLY the final corrected version.\n"
     "6. Fix punctuation and capitalization. Split into sentences and paragraphs where natural.\n"
     "7. Do NOT add information, do NOT summarize, do NOT change meaning or style. Do not answer questions "
@@ -69,14 +70,16 @@ class Cleaner:
             self.model = want
         else:
             import re
+
             chat = [m for m in models if "embed" not in m.lower()]
 
             def score(m):
                 fam = next((len(PREFERRED) - i for i, p in enumerate(PREFERRED) if m.lower().startswith(p)), 0)
                 size = re.search(r"(\d+(?:\.\d+)?)b", m.lower())
                 b = float(size.group(1)) if size else 7.0
-                fits = 1 if 6 <= b <= 16 else 0   # 7-14B: якісно і швидко на відеокарті
+                fits = 1 if 6 <= b <= 16 else 0  # 7-14B: якісно і швидко на відеокарті
                 return (fits, fam, b if fits else -b)
+
             self.model = max(chat, key=score) if chat else None
         return self.model
 
@@ -87,8 +90,10 @@ class Cleaner:
     def is_loaded(self, model):
         """Чи модель уже у відеопам'яті (інакше перший запит чекатиме її завантаження десятки секунд)."""
         try:
-            return any(m.get("name") == model or m.get("model") == model
-                       for m in self._get("/api/ps", timeout=0.5).get("models", []))
+            return any(
+                m.get("name") == model or m.get("model") == model
+                for m in self._get("/api/ps", timeout=0.5).get("models", [])
+            )
         except Exception:
             return False
 
@@ -106,19 +111,23 @@ class Cleaner:
             # Не змушуємо людину чекати: вставляємо як є, а модель вантажимо у фоні на наступний раз.
             logging.info("Очищення: %s ще не в пам'яті — вставляю без очищення, вантажу у фоні", model)
             import threading
+
             self._last_load = 0
             threading.Thread(target=self.preload, daemon=True).start()
             return text
-        body = json.dumps({
-            "model": model, "stream": False, "keep_alive": "30m", "think": False,
-            "options": {"temperature": 0, "num_predict": max(64, len(text) // 2)},
-            "messages": [{"role": "system", "content": SYSTEM + self._vocab()},
-                         {"role": "user", "content": text}],
-        }).encode("utf-8")
+        body = json.dumps(
+            {
+                "model": model,
+                "stream": False,
+                "keep_alive": "30m",
+                "think": False,
+                "options": {"temperature": 0, "num_predict": max(64, len(text) // 2)},
+                "messages": [{"role": "system", "content": SYSTEM + self._vocab()}, {"role": "user", "content": text}],
+            }
+        ).encode("utf-8")
         t = time.time()
         try:
-            req = urllib.request.Request(OLLAMA + "/api/chat", data=body,
-                                         headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(OLLAMA + "/api/chat", data=body, headers={"Content-Type": "application/json"})
             # жорстка межа: краще вставити сирий текст, ніж змушувати чекати
             with urllib.request.urlopen(req, timeout=min(float(self.cfg["cleanup_timeout"]), 12)) as r:
                 out = json.loads(r.read().decode("utf-8"))["message"]["content"].strip()
@@ -147,8 +156,9 @@ class Cleaner:
             return
         try:
             body = json.dumps({"model": model, "prompt": "", "keep_alive": "30m"}).encode("utf-8")
-            req = urllib.request.Request(OLLAMA + "/api/generate", data=body,
-                                         headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(
+                OLLAMA + "/api/generate", data=body, headers={"Content-Type": "application/json"}
+            )
             t = time.time()
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 r.read()

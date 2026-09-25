@@ -1,4 +1,5 @@
 """Завантаження моделей у теку даних (один раз, при першому запуску)."""
+
 import logging
 import shutil
 import sys
@@ -29,11 +30,13 @@ STEPS = [
 
 def download_all(progress=lambda i, n, msg: print(f"[{i}/{n}] {msg}", flush=True)):
     from huggingface_hub import hf_hub_download, snapshot_download
+
     cfg = Config()
     n = len(STEPS)
 
     progress(1, n, STEPS[0])
     from faster_whisper import download_model
+
     download_model(cfg["stt_model"])
 
     progress(2, n, STEPS[1])
@@ -47,6 +50,7 @@ def download_all(progress=lambda i, n, msg: print(f"[{i}/{n}] {msg}", flush=True
 
     progress(4, n, STEPS[3])
     from ukrainian_word_stress import Stressifier
+
     Stressifier()  # саме скачує дані stanza
 
     progress(5, n, STEPS[4])

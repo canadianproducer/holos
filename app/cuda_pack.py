@@ -4,6 +4,7 @@
 відеокарта NVIDIA, при першому запуску докачуємо офіційні бібліотеки NVIDIA
 (з PyPI, ті самі, що ставить pip) — і faster-whisper працює на відеокарті.
 """
+
 import ctypes
 import json
 import logging

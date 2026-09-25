@@ -4,6 +4,7 @@
 на будь-якій розкладці. Літери в комбінаціях не радимо (на кирилиці `keyboard`
 їх називає інакше).
 """
+
 import logging
 import queue
 import threading
@@ -12,12 +13,25 @@ import time
 import keyboard
 
 ALIASES = {
-    "left ctrl": "ctrl", "control": "ctrl", "left control": "ctrl", "right control": "right ctrl",
-    "left shift": "shift", "left alt": "alt", "alt gr": "right alt", "altgr": "right alt",
-    "left windows": "win", "right windows": "win", "windows": "win", "escape": "esc",
+    "left ctrl": "ctrl",
+    "control": "ctrl",
+    "left control": "ctrl",
+    "right control": "right ctrl",
+    "left shift": "shift",
+    "left alt": "alt",
+    "alt gr": "right alt",
+    "altgr": "right alt",
+    "left windows": "win",
+    "right windows": "win",
+    "windows": "win",
+    "escape": "esc",
 }
-GENERIC = {"ctrl": {"ctrl", "right ctrl"}, "shift": {"shift", "right shift"},
-           "alt": {"alt", "right alt"}, "win": {"win"}}
+GENERIC = {
+    "ctrl": {"ctrl", "right ctrl"},
+    "shift": {"shift", "right shift"},
+    "alt": {"alt", "right alt"},
+    "win": {"win"},
+}
 
 
 def norm(name: str) -> str:
