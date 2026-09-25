@@ -900,17 +900,25 @@ def smoke() -> int:
     import importlib
     import traceback
 
-    lines, failed = [f"Holos {VERSION}"], 0
-    for name in SMOKE_MODULES:
-        try:
-            importlib.import_module(name)
-            lines.append(f"ok    {name}")
-        except Exception:
-            failed += 1
-            lines.append(f"FAIL  {name}\n{traceback.format_exc()}")
-    lines.append("SMOKE OK" if not failed else f"SMOKE FAILED: {failed}")
-    (LOGS / "smoke.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print("\n".join(lines), flush=True)
+    failed = 0
+    # пишемо по рядку одразу: якщо збірка впаде на імпорті, у файлі буде видно, на якому
+    with open(LOGS / "smoke.txt", "w", encoding="utf-8") as out:
+
+        def say(line):
+            print(line, flush=True)
+            out.write(line + "\n")
+            out.flush()
+
+        say(f"Holos {VERSION}")
+        for name in SMOKE_MODULES:
+            say(f"...   {name}")
+            try:
+                importlib.import_module(name)
+                say(f"ok    {name}")
+            except Exception:
+                failed += 1
+                say(f"FAIL  {name}\n{traceback.format_exc()}")
+        say("SMOKE OK" if not failed else f"SMOKE FAILED: {failed}")
     return 1 if failed else 0
 
 

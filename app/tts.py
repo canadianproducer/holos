@@ -248,7 +248,7 @@ class Speaker:
             peak = float(np.max(np.abs(a))) or 1.0
             a = (a / peak * 0.9).astype(np.float32)
             a = np.concatenate([a, np.zeros(int(sr * 0.12), np.float32)])  # пауза між реченнями
-        logging.debug("synth %s %.2fs: %s", lang, time.time() - t, sent[:60])
+        logging.debug("synth %s %.2fs: %d симв.", lang, time.time() - t, len(sent))
         return a, sr
 
     def _play(self, q):

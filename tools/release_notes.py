@@ -1,6 +1,6 @@
 """Текст сторінки релізу: розділ версії з CHANGELOG.md + коротка інструкція встановлення.
 
-python tools/release_notes.py 0.4.0 > notes.md
+python tools/release_notes.py 0.4.0 notes.md
 """
 
 import re
@@ -38,5 +38,9 @@ def main(version: str) -> str:
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    print(main(sys.argv[1].lstrip("v")))
+    notes = main(sys.argv[1].lstrip("v"))
+    if len(sys.argv) > 2:  # у файл — завжди UTF-8, незалежно від кодування консолі Windows
+        Path(sys.argv[2]).write_text(notes, encoding="utf-8")
+    else:
+        sys.stdout.reconfigure(encoding="utf-8")
+        print(notes)
