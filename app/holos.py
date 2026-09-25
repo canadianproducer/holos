@@ -14,7 +14,18 @@ import wave
 
 import common  # noqa: F401  (до будь-яких ML-бібліотек: задає теки моделей і змінні HF_*)
 import winutil
-from common import CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, RES_DIR, ROOT, VERSION, Config, setup_logging
+from common import (
+    CONFIG_PATH,
+    HISTORY_PATH,
+    LOGS,
+    READY_FLAG,
+    RES_DIR,
+    ROOT,
+    VERSION,
+    Config,
+    append_history,
+    setup_logging,
+)
 
 setup_logging()
 log = logging.getLogger("holos")
@@ -368,11 +379,8 @@ class App:
                 self.set_state("processing", "Причісую текст…")
                 text = self.cleaner.clean(text)
             self.last_text = text
-            try:
-                with open(HISTORY_PATH, "a", encoding="utf-8") as f:
-                    f.write(time.strftime("%Y-%m-%d %H:%M  ") + text + "\n")
-            except Exception:
-                pass
+            if self.cfg["save_history"]:
+                append_history(text)
             winutil.paste_text(text + " ", self.target_hwnd, self.cfg["restore_clipboard"])
             self.set_state("idle")
 

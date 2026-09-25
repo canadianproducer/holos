@@ -10,6 +10,8 @@ import logging
 import time
 import urllib.request
 
+from common import redact
+
 OLLAMA = "http://127.0.0.1:11434"
 
 SYSTEM = (
@@ -140,10 +142,12 @@ class Cleaner:
             out = out.split("</think>")[-1].strip()
         # страховка: модель не повинна вигадувати чи різко скорочувати
         if not out or len(out) > len(text) * 1.3 + 20 or len(out) < len(text) * 0.3:
-            logging.warning("Очищення дало підозрілий результат — лишаю сирий текст: %r", out[:200])
+            logging.warning(
+                "Очищення дало підозрілий результат (%d → %d симв.) — лишаю сирий текст", len(text), len(out)
+            )
             return text
         self._last_load = time.time()
-        logging.info("Очищено (%s, %.2f с): %s", model, time.time() - t, out)
+        logging.info("Очищено (%s, %.2f с): %s", model, time.time() - t, redact(out, self.cfg))
         return out
 
     def preload(self, timeout=90):

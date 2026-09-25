@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 VERSION = "0.3.1"
@@ -84,6 +85,9 @@ DEFAULTS = {
         "UkraineInfo",
     ],  # {"кома": ","} — власні заміни після розпізнавання
     "restore_clipboard": True,
+    # --- Приватність ---
+    "save_history": True,  # зберігати продиктоване в logs/history.txt (меню «Історія диктувань»)
+    "log_text": False,  # писати текст диктовки в журнал (лише для діагностики: журнал прикладають до Issue)
     # «Розумне очищення» через локальну Ollama: auto (якщо Ollama запущена) | off
     "cleanup": "auto",
     "cleanup_model": "",  # порожньо = обрати автоматично з встановлених
@@ -139,9 +143,31 @@ class Config:
         CONFIG_PATH.write_text(json.dumps(self.data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+LOG_MAX_BYTES = 2 * 1024 * 1024
+HISTORY_MAX_BYTES = 5 * 1024 * 1024
+
+
+def redact(text: str, cfg) -> str:
+    """Текст диктовки потрапляє в журнал лише якщо користувач сам увімкнув log_text."""
+    return text if cfg["log_text"] else f"<{len(text)} симв.>"
+
+
+def append_history(text: str, path: Path = HISTORY_PATH, max_bytes: int = HISTORY_MAX_BYTES):
+    """Дописує диктовку в історію. Великий файл перейменовується на history.1.txt (зберігаємо лише одну стару копію)."""
+    try:
+        if path.exists() and path.stat().st_size > max_bytes:
+            path.replace(path.with_suffix(".1.txt"))
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M  ") + text + "\n")
+    except OSError as e:
+        logging.warning("Історія не записана: %s", e)
+
+
 def setup_logging():
+    from logging.handlers import RotatingFileHandler
+
     fmt = "%(asctime)s %(levelname)s %(threadName)s: %(message)s"
-    handlers = [logging.FileHandler(LOGS / "holos.log", encoding="utf-8")]
+    handlers = [RotatingFileHandler(LOGS / "holos.log", maxBytes=LOG_MAX_BYTES, backupCount=3, encoding="utf-8")]
     if sys.stdout is not None and not FROZEN:
         handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(level=logging.INFO, format=fmt, handlers=handlers, force=True)
