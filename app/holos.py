@@ -469,7 +469,7 @@ class App:
             I("Історія диктувань", open_path(HISTORY_PATH)),
             I("Налаштування (config.json)", open_path(CONFIG_PATH)),
             I("Журнал помилок", open_path(LOGS / "holos.log")),
-            I("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_path().exists()),
+            I("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_enabled()),
             M.SEPARATOR,
             I("Вийти", self.quit),
         )
@@ -477,35 +477,73 @@ class App:
         self.update_tray_title()
         self.tray.run()
 
-    def autostart_path(self):
-        from pathlib import Path
-        return Path(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs\Startup", "Holos.vbs")
+    # Автозапуск = значення в реєстрі HKCU\...\Run (як у більшості програм).
+    # Якщо exe переміщено чи видалено, Windows мовчки пропускає запис — жодних вікон з помилкою.
+    RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    RUN_NAME = "Holos"
 
-    def _autostart_script(self):
-        # Запускаємо сам Holos.exe (у режимі з коду — pythonw + holos.py)
+    def _autostart_cmd(self):
         if getattr(sys, "frozen", False):
-            cmd = f'"""{sys.executable}"""'
-        else:
-            pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
-            cmd = f'"""{pyw}"" ""{os.path.abspath(__file__)}"""'
-        return f'CreateObject("WScript.Shell").Run {cmd}, 0, False\r\n'
+            return f'"{sys.executable}"'
+        pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+        return f'"{pyw}" "{os.path.abspath(__file__)}"'
+
+    def _run_get(self):
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY) as k:
+                return winreg.QueryValueEx(k, self.RUN_NAME)[0]
+        except OSError:
+            return None
+
+    def _run_set(self, value):
+        import winreg
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY) as k:
+            if value is None:
+                try:
+                    winreg.DeleteValue(k, self.RUN_NAME)
+                except FileNotFoundError:
+                    pass
+            else:
+                winreg.SetValueEx(k, self.RUN_NAME, 0, winreg.REG_SZ, value)
+
+    def autostart_enabled(self):
+        return os.name == "nt" and self._run_get() is not None
 
     def toggle_autostart(self):
-        p = self.autostart_path()
-        if p.exists():
-            p.unlink()
-        else:
-            p.write_text(self._autostart_script(), encoding="utf-16")
+        try:
+            self._run_set(None if self.autostart_enabled() else self._autostart_cmd())
+        except Exception:
+            log.exception("Автозапуск")
+
+    @staticmethod
+    def _legacy_startup_files():
+        from pathlib import Path
+        d = Path(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs\Startup")
+        return [d / "Holos.vbs", d / "Голос.lnk"]
 
     def repair_autostart(self):
-        """Автозапуск, створений старою версією, вказував на неіснуючий файл — переписуємо на актуальний шлях."""
+        """Версії до 0.3.1 клали Holos.vbs / ярлик у теку «Автозавантаження».
+        Коли exe переїжджав, Windows при старті показувала «The system cannot find the file specified».
+        Прибираємо їх і переносимо автозапуск у реєстр; битий шлях у реєстрі — оновлюємо."""
+        if os.name != "nt":
+            return
         try:
-            p = self.autostart_path()
-            if p.exists() and os.name == "nt":
-                want = self._autostart_script()
-                if p.read_text(encoding="utf-16") != want:
-                    p.write_text(want, encoding="utf-16")
-                    log.info("Автозапуск оновлено: %s", p)
+            had_legacy = False
+            for p in self._legacy_startup_files():
+                if p.exists():
+                    p.unlink()
+                    had_legacy = True
+                    log.info("Прибрано старий автозапуск: %s", p)
+            cur = self._run_get()
+            if cur is None:
+                if had_legacy:
+                    self._run_set(self._autostart_cmd())
+            else:
+                target = cur.split('"')[1] if cur.startswith('"') else cur.split(" ")[0]
+                if not os.path.exists(target):
+                    self._run_set(self._autostart_cmd())
+                    log.info("Автозапуск оновлено: %s", self._autostart_cmd())
         except Exception:
             log.exception("Автозапуск")
 
