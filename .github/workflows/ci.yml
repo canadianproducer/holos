@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Syntax check
+        run: python -m compileall -q app
+
+      - name: Lint (errors only)
+        run: |
+          pip install ruff==0.16.9
+          ruff check --select E9,F app
+
+      - name: Version is described in CHANGELOG
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path app/common.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
+          if (-not (Select-String -Path CHANGELOG.md -SimpleMatch "## [$v]")) { throw "CHANGELOG.md has no section for $v" }
+          Write-Host "VERSION $v OK"
