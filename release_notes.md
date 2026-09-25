@@ -10,4 +10,4 @@
 - 🔄 Автоматичні оновлення
 - 🔒 Усе працює локально, без інтернету
 
-Автор — Alex Potapenko (Canadian Producer). Код написано в парі з AI-асистентом Claude. Проєкт незалежний і не пов'язаний з Anthropic.
+Автор — Oleksandr Potapenko (Canadian Producer). Код написано в парі з AI-асистентом Claude.
