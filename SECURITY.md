@@ -1,16 +1,17 @@
-# Безпека
+# Security
 
-«Голос» працює локально. У мережу він звертається лише для:
-- завантаження моделей з Hugging Face (перший запуск);
-- перевірки й завантаження оновлень з GitHub Releases;
-- пакета прискорення NVIDIA з PyPI (за бажанням);
-- локальної Ollama на `127.0.0.1` (розумне очищення).
+Holos runs locally. It only goes online to:
+- download the speech models from Hugging Face (first launch);
+- check for and download updates from GitHub Releases;
+- download the optional NVIDIA acceleration pack from PyPI;
+- talk to a local Ollama on `127.0.0.1` (smart cleanup).
 
-Оновлення й пакет NVIDIA перевіряються за SHA-256 до запуску чи розпакування. Текст диктовок не пишеться в журнал.
+Updates and the NVIDIA pack are verified against SHA-256 checksums before they are run or unpacked.
+Dictated text is not written to the log.
 
-## Підтримувані версії
-Лише остання випущена версія.
+## Supported versions
+Only the latest release.
 
-## Як повідомити про вразливість
-Не створюйте публічний Issue. Напишіть приватно через вкладку
-**Security → Report a vulnerability** цього репозиторію. Відповідь — протягом тижня.
+## Reporting a vulnerability
+Please do not open a public issue. Report it privately via **Security → Report a vulnerability** in this
+repository. You will get a reply within a week.

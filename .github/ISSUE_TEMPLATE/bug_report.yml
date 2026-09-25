@@ -1,30 +1,30 @@
-name: Щось не працює
-description: Повідомити про помилку
+name: Bug report / Помилка
+description: Something doesn't work — you can write in English or Ukrainian
 labels: [bug]
 body:
   - type: input
     id: version
     attributes:
-      label: Версія «Голосу»
-      description: "Меню іконки в треї → перший рядок («Стан: … · v0.3.1»)"
-      placeholder: v0.3.1
+      label: Holos version
+      description: "Tray icon menu → first line (e.g. «Стан: … · v0.4.0»)"
+      placeholder: v0.4.0
     validations:
       required: true
   - type: input
     id: system
     attributes:
-      label: Windows і відеокарта
-      placeholder: Windows 11, NVIDIA RTX 3060 / без відеокарти
+      label: Windows and graphics card
+      placeholder: Windows 11, NVIDIA RTX 3060 / no dedicated GPU
   - type: textarea
     id: what
     attributes:
-      label: Що сталося і що ви очікували
-      description: Кроки, щоб повторити, якщо відомі.
+      label: What happened and what you expected
+      description: Steps to reproduce, if you know them.
     validations:
       required: true
   - type: textarea
     id: log
     attributes:
-      label: Журнал
-      description: "Меню трею → «Журнал помилок». Вставте останні рядки. Текст ваших диктовок туди не пишеться."
+      label: Log
+      description: "Tray menu → error log (Журнал помилок). Paste the last lines. Your dictated text is never written there."
       render: text

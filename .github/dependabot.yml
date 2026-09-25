@@ -1,5 +1,5 @@
-# Оновлення версій GitHub Actions — окремими Pull Request-ами щотижня.
-# Python-залежності оновлюємо вручну (requirements.lock), див. CONTRIBUTING.md.
+# Weekly pull requests that update GitHub Actions versions.
+# Python dependencies are updated by hand (requirements.lock), see CONTRIBUTING.md.
 version: 2
 updates:
   - package-ecosystem: github-actions

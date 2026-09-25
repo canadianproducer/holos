@@ -1,6 +1,6 @@
-# Точні версії всіх залежностей, з якими зібрано реліз (генерується з .build/env-cpu).
-# torch/torchaudio ставляться окремо з індексу PyTorch — див. build.bat.
-# Оновлення: змінити requirements.txt, зібрати, перегенерувати цей файл окремим комітом.
+# Exact versions of every dependency a release is built with (generated from the build environment).
+# torch/torchaudio are installed separately from the PyTorch index — see build.bat.
+# To update: change requirements.txt, build, test, regenerate this file in its own commit.
 
 annotated-doc==0.0.5
 anyio==4.15.1

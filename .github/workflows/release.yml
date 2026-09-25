@@ -1,6 +1,6 @@
-# Збірка інсталятора на чистій машині GitHub і публікація релізу.
-#   - тег vX.Y.Z  -> збірка, перевірки, реліз з інсталятором і SHA256SUMS.txt
-#   - вручну (Actions -> Release -> Run workflow) -> лише збірка, файл у Artifacts
+# Builds the installer on a clean GitHub runner and publishes the release.
+#   - tag vX.Y.Z  -> build, checks, release with the installer and SHA256SUMS.txt
+#   - manual run (Actions -> Release -> Run workflow) -> build only, installer in Artifacts
 name: Release
 
 on:
@@ -121,5 +121,5 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "Голос $VERSION" --notes-file release/notes.md \
+            --title "Holos $VERSION" --notes-file release/notes.md \
             release/Holos-Setup-*.exe release/SHA256SUMS.txt

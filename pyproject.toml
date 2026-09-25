@@ -12,7 +12,7 @@ Homepage = "https://github.com/canadianproducer/holos"
 Issues = "https://github.com/canadianproducer/holos/issues"
 Changelog = "https://github.com/canadianproducer/holos/blob/main/CHANGELOG.md"
 
-# Застосунок, не бібліотека: збирається PyInstaller-ом (holos.spec), тут — лише налаштування інструментів.
+# An application, not a library: packaged by PyInstaller (holos.spec). This file only configures the tools.
 
 [tool.ruff]
 line-length = 120
@@ -23,11 +23,11 @@ extend-exclude = [".build", "build", "dist", "dist-release"]
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "S"]
 ignore = [
-  "E501",   # довгі рядки — форматер, а довгі українські рядки лишаємо як є
-  "S101",   # assert у тестах
-  "S110",   # try/except/pass — свідомо у звуках/буфері обміну (не можна ламати диктування)
-  "S603",   # subprocess з фіксованими аргументами (інсталятор оновлення)
-  "S310",   # urlopen: лише https:// і локальна Ollama, перевіряється в коді
+  "E501",   # line length is handled by the formatter; long UI strings stay as they are
+  "S101",   # assert in tests
+  "S110",   # try/except/pass is deliberate around sounds/clipboard (must never break dictation)
+  "S603",   # subprocess with fixed arguments (update installer)
+  "S310",   # urlopen: only https:// and the local Ollama, enforced in code
 ]
 
 [tool.ruff.lint.isort]

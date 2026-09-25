@@ -1,46 +1,48 @@
-# Як влаштований «Голос»
+# Architecture
 
-Настільна програма для Windows у треї. Один процес, кілька потоків; усе обчислення — локально.
+A Windows tray application. One process, several threads; all computation is local.
 
-## Модулі (`app/`)
+## Modules (`app/`)
 
-| Модуль | Відповідає за |
+| Module | Responsibility |
 |---|---|
-| `holos.py` | Точка входу, інтерфейс (tkinter-плашка, меню в треї), логіка диктування й читання, оновлення, автозапуск, перше налаштування, `--selftest`, `--smoke` |
-| `common.py` | Теки даних, налаштування (`Config`), журнал, вибір пристрою (CPU/CUDA). Імпортується до ML-бібліотек: задає `HF_HOME` тощо |
-| `stt.py` | Запис з мікрофона (`Recorder`), розпізнавання faster-whisper (`Transcriber`), фільтр «галюцинацій» |
-| `tts.py` | Озвучення: StyleTTS2 (українська), Piper (російська/англійська), вербалізація чисел, потокове відтворення |
-| `cleanup.py` | «Розумне очищення» через локальну Ollama; сирий текст, якщо модель недоступна чи результат підозрілий |
-| `hotkeys.py` | Глобальні гарячі клавіші з утриманням (натиснув/відпустив), одна черга обробки |
-| `winutil.py` | Win32: вставка через буфер і SendInput (незалежно від розкладки), фокус вікна, плашка без фокуса |
-| `updater.py` | Перевірка GitHub Releases, завантаження з перевіркою SHA-256, тихе встановлення |
-| `cuda_pack.py` | Пакет прискорення NVIDIA: зафіксовані wheel-и з PyPI, перевірка SHA-256 |
-| `download_models.py` | Завантаження моделей при першому запуску |
+| `holos.py` | Entry point, UI (tkinter overlay, tray menu), dictation and read-aloud flow, updates, autostart, first-run setup, `--selftest`, `--smoke` |
+| `common.py` | Data folders, settings (`Config`), logging, device selection (CPU/CUDA). Imported before any ML library: sets `HF_HOME` etc. |
+| `stt.py` | Microphone capture (`Recorder`), faster-whisper recognition (`Transcriber`), hallucination filter |
+| `tts.py` | Speech: StyleTTS2 (Ukrainian), Piper (Russian/English), number verbalization, streaming playback |
+| `cleanup.py` | Smart cleanup via a local Ollama; falls back to the raw text if the model is unavailable or the result looks wrong |
+| `hotkeys.py` | Global hotkeys with hold/release, handled on a single queue |
+| `winutil.py` | Win32: paste via clipboard + SendInput (layout-independent), window focus, non-activating overlay |
+| `updater.py` | GitHub Releases check, download with SHA-256 verification, silent install |
+| `cuda_pack.py` | NVIDIA acceleration pack: pinned PyPI wheels, SHA-256 verified |
+| `download_models.py` | Model download on first launch |
 
-## Потік диктування
+## Dictation flow
 
 ```
-правий Ctrl ↓ ─ hotkeys ─► Recorder.start()           (звук у буфер, 16 кГц)
-правий Ctrl ↑ ─ hotkeys ─► Recorder.stop() ─► потік stt
-                              Transcriber.transcribe()  (VAD, підказка зі словником)
-                              Cleaner.clean()           (якщо Ollama вже в пам'яті, ≤12 с)
-                              winutil.paste_text()      (буфер обміну + Ctrl+V у вихідне вікно)
+Right Ctrl down ─ hotkeys ─► Recorder.start()           (audio buffered at 16 kHz)
+Right Ctrl up   ─ hotkeys ─► Recorder.stop() ─► stt thread
+                               Transcriber.transcribe()  (VAD, prompt with the user's vocabulary)
+                               Cleaner.clean()           (only if Ollama already has the model loaded, ≤12 s)
+                               winutil.paste_text()      (clipboard + Ctrl+V into the original window)
 ```
-Інтерфейс оновлюється лише з головного потоку (tkinter): інші потоки кладуть стан у чергу `App.events`.
+The UI is only touched from the main thread (tkinter); other threads post state changes to the `App.events` queue.
 
-## Дані користувача
+## User data
 
-`%LOCALAPPDATA%\Holos` (або поруч з exe, якщо є `portable.txt`; або `HOLOS_DATA_DIR`):
-`config.json`, `models\` (~3 ГБ), `logs\holos.log` (ротація 2 МБ × 3, без тексту диктовок), `logs\history.txt`.
+`%LOCALAPPDATA%\Holos` (or next to the exe when `portable.txt` exists, or `HOLOS_DATA_DIR`):
+`config.json`, `models\` (~3 GB), `logs\holos.log` (rotated 2 MB × 3, no dictated text), `logs\history.txt`.
 
-## Збірка й випуск
+## Build and release
 
-- `build.bat` — однаково локально і в CI: uv + Python 3.11 → залежності з `requirements.lock` → PyInstaller (`holos.spec`) → Inno Setup (`installer.iss`).
-- Версія — лише в `app/common.py`; звідти її беруть інсталятор, властивості exe й перевірки CI.
-- `.github/workflows/ci.yml` — ruff і pytest на кожен push/PR; `release.yml` — збірка, smoke-тести й публікація за тегом `vX.Y.Z`.
+- `build.bat` runs the same way locally and in CI: uv + Python 3.11 → dependencies from `requirements.lock` →
+  PyInstaller (`holos.spec`) → Inno Setup (`installer.iss`).
+- The version lives only in `app/common.py`; the installer, the exe properties and the CI checks read it from there.
+- `.github/workflows/ci.yml` — ruff and pytest on every push/PR; `release.yml` — build, smoke tests and publishing
+  for a `vX.Y.Z` tag.
 
-## Відомі обмеження
+## Known limitations
 
-- Інсталятор не підписаний сертифікатом (Windows SmartScreen показує попередження). Цілісність оновлень гарантує перевірка SHA-256.
-- Моделі на Hugging Face завантажуються з гілки `main`, без фіксації ревізії.
-- Лише Windows 10/11 x64.
+- The installer is not code-signed (Windows SmartScreen shows a warning). Update integrity is guaranteed by SHA-256.
+- Hugging Face models are downloaded from the `main` revision, not a pinned commit.
+- Windows 10/11 x64 only.

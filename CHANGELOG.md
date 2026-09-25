@@ -1,52 +1,54 @@
-# Журнал змін
+# Changelog
 
-Усі помітні зміни «Голосу». Формат — [Keep a Changelog](https://keepachangelog.com/uk/1.1.0/),
-версії — за [семантичним версіонуванням](https://semver.org/lang/uk/).
+All notable changes to Holos are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.4.0] — 2026-09-25
+## [0.4.0] - 2026-09-25
 
-### Додано
-- Налаштування `save_history` (зберігати історію диктувань) і `log_text` (текст диктовок у журналі — лише для діагностики).
-- `Holos.exe --smoke` — перевірка самої збірки без моделей.
-- У «Властивостях» Holos.exe — версія й опис; разом із програмою встановлюються ліцензії компонентів.
+### Added
+- Settings `save_history` (keep dictation history) and `log_text` (write dictated text to the log — for debugging only).
+- `Holos.exe --smoke` checks a packaged build without models.
+- Holos.exe carries version and description in its file properties; component licenses are installed with the app.
 
-### Змінено
-- Релізи збирає й перевіряє GitHub Actions на чистій Windows-машині: тести, запуск збірки, тихе встановлення й видалення.
-  До релізу додається `SHA256SUMS.txt`.
-- Збірка відтворювана: точні версії всіх залежностей (`requirements.lock`), uv і Python; номер версії — в одному місці.
+### Changed
+- Releases are built and tested by GitHub Actions on a clean Windows runner: unit tests, a run of the built app,
+  a silent install/run/uninstall cycle. Each release includes `SHA256SUMS.txt`.
+- Reproducible builds: exact versions of all dependencies (`requirements.lock`), uv and Python; the version number
+  lives in one place.
+- Documentation is in English, with a Ukrainian README (`README.uk.md`).
 
-### Виправлено
-- Після перезавантаження Windows більше не з'являється помилка «Holos.vbs … The system cannot find the file specified».
-  Автозапуск тепер — запис у реєстрі; старий файл прибирається автоматично.
-- **Безпека:** оновлення встановлюється лише після перевірки розміру й SHA-256; без контрольної суми — лише посилання
-  на сторінку релізу. Пакет прискорення NVIDIA перевіряється за зафіксованими в коді SHA-256.
-- **Приватність:** текст диктовок більше не потрапляє в журнал помилок (його прикладають до Issue).
-  Старі журнали, де він був, видаляються при першому запуску 0.4.0. Журнал і історія мають обмеження розміру.
-- Зіпсований `config.json` більше не затирається стандартними налаштуваннями — зберігається копія `config.json.broken`;
-  налаштування записуються атомарно, значення неправильного типу ігноруються.
-- Збірка не повідомляла про помилку, якщо не вдався крок інсталятора.
-- Оновлення більше не вмикає знову автозапуск, якщо ви вимкнули його в меню; після видалення програми
-  в реєстрі не лишається запису автозапуску.
+### Fixed
+- The "Holos.vbs … The system cannot find the file specified" error no longer appears after Windows restarts.
+  Autostart is now a registry entry; the old Startup-folder file is removed automatically.
+- **Security:** an update is installed only after its size and SHA-256 checksum are verified; without a checksum
+  the app only links to the release page. The NVIDIA acceleration pack is verified against SHA-256 values pinned in code.
+- **Privacy:** dictated text is no longer written to the error log (users attach it to public issues).
+  Older logs that contain it are deleted once on the first start of 0.4.0. The log and the history are size-limited.
+- A corrupt `config.json` is no longer overwritten with defaults — a copy is kept as `config.json.broken`;
+  settings are saved atomically and values of the wrong type are ignored.
+- The build reported success even when the installer step failed.
+- Updates no longer re-enable autostart after it was turned off in the tray menu; uninstalling removes the
+  autostart registry entry.
 
-### Для розробників
-- Порядок роботи з гілками й випусками (CONTRIBUTING.md), архітектура (docs/ARCHITECTURE.md), SECURITY.md,
-  THIRD_PARTY_NOTICES.md, шаблони Issue/PR.
-- 50+ модульних тестів (pytest), ruff (стиль, помилки, безпека), pre-commit, CI на Linux і Windows, Dependabot.
+### Developer
+- Branching and release process (CONTRIBUTING.md), architecture (docs/ARCHITECTURE.md), SECURITY.md,
+  THIRD_PARTY_NOTICES.md, issue and pull request templates.
+- 50+ unit tests (pytest), ruff (style, bugs, security), pre-commit, CI on Linux and Windows, Dependabot.
 
-## [0.3.0] — 2026-09-24
+## [0.3.0] - 2026-09-24
 
-### Додано
-- Інсталятор `Holos-Setup.exe` без прав адміністратора.
-- Автоматичні оновлення з GitHub Releases.
-- Пакет прискорення NVIDIA докачується при першому запуску.
-- Розумне очищення через Ollama не затримує диктування.
+### Added
+- `Holos-Setup.exe` installer that needs no administrator rights.
+- Automatic updates from GitHub Releases.
+- NVIDIA acceleration pack downloaded on first launch.
+- Smart cleanup via Ollama no longer delays dictation.
 
-## [0.2.0] — 2026-09-24
+## [0.2.0] - 2026-09-24
 
-### Додано
-- Перший робочий випуск: диктування (правий Ctrl) і читання вголос (Ctrl+Shift+Пробіл).
+### Added
+- First working release: dictation (Right Ctrl) and read-aloud (Ctrl+Shift+Space).
 
 [Unreleased]: https://github.com/canadianproducer/holos/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/canadianproducer/holos/compare/v0.3.0...v0.4.0

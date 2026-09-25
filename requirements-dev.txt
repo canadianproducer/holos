@@ -1,4 +1,4 @@
-# Інструменти розробника й CI (програма їх не потребує)
+# Developer and CI tools (not needed by the app)
 pytest==9.1.1
 ruff==0.15.11
 numpy==1.26.4
