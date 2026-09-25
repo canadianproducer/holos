@@ -9,8 +9,13 @@ $ver = (Select-String -Path "app\common.py" -Pattern '^VERSION = "(.+)"').Matche
 $asset = "dist\Holos-Setup-$ver.exe"
 if (-not (Test-Path $asset)) { throw "Not found: $asset. Run build-release.bat first." }
 
-# ask Git Credential Manager for the saved GitHub login (lines are piped one by one)
-$cred = @("protocol=https", "host=github.com", "") | git credential fill
+# Ask Git Credential Manager for the saved GitHub login.
+# Input goes through a plain ASCII file: piping from PowerShell can prepend a BOM
+# ("refusing to work with credential missing protocol field").
+$credIn = Join-Path $env:TEMP "holos-cred.txt"
+[IO.File]::WriteAllText($credIn, "protocol=https`nhost=github.com`n`n", [Text.Encoding]::ASCII)
+$cred = cmd /c "git credential fill < `"$credIn`""
+Remove-Item $credIn -ErrorAction SilentlyContinue
 $token = (($cred | Where-Object { $_ -like "password=*" }) -replace "^password=", "")
 if (-not $token) { throw "No GitHub login in Git. Run publish.bat first." }
 $h = @{ Authorization = "Bearer $token"; Accept = "application/vnd.github+json"; "User-Agent" = "holos-release" }
