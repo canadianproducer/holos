@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-spec = importlib.util.spec_from_file_location("release_notes", Path(__file__).parent.parent / "tools" / "release_notes.py")
+spec = importlib.util.spec_from_file_location(
+    "release_notes", Path(__file__).parent.parent / "tools" / "release_notes.py"
+)
 release_notes = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release_notes)
 

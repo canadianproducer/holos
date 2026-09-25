@@ -1,6 +1,6 @@
 """Текст сторінки релізу: розділ версії з CHANGELOG.md + коротка інструкція встановлення.
 
-    python tools/release_notes.py 0.4.0 > notes.md
+python tools/release_notes.py 0.4.0 > notes.md
 """
 
 import re
