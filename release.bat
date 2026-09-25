@@ -8,7 +8,6 @@ set NOPAUSE=1
 
 for /f tokens^=2^ delims^=^" %%v in ('findstr /b /c:"VERSION = " app\common.py') do set "VER=%%v"
 if not defined VER ( echo Cannot read VERSION from app\common.py & goto :fail )
-findstr /c:"#define AppVersion \"%VER%\"" installer.iss >nul || ( echo installer.iss AppVersion is not %VER% & goto :fail )
 git rev-parse -q --verify "refs/tags/v%VER%" >nul || ( echo Tag v%VER% not found. Create it after merging the release branch. & goto :fail )
 git merge-base --is-ancestor "v%VER%" main || ( echo Tag v%VER% is not on main. & goto :fail )
 echo === Releasing Holos %VER% ===

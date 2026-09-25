@@ -56,7 +56,8 @@ echo [3/5] PyTorch (%VARIANT%) — може зайняти кілька хвил
 
 rem --- 4. Other libraries ---
 echo [4/5] Бібліотеки...
-"%UV%" pip install --python "%PY%" -r requirements.txt pyinstaller || goto :fail
+rem exact versions from requirements.lock -> reproducible builds
+"%UV%" pip install --python "%PY%" -r requirements.lock pyinstaller==6.22.3 || goto :fail
 
 rem --- 5. Build exe ---
 echo [5/5] Збираю Holos.exe...
@@ -79,9 +80,11 @@ if not exist "%ISCC%" if defined RELEASE (
     if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
     if exist "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
 )
+rem single source of the version number: app\common.py
+for /f tokens^=2^ delims^=^" %%v in ('findstr /b /c:"VERSION = " app\common.py') do set "APPVER=%%v"
 if exist "%ISCC%" (
     echo Створюю інсталятор...
-    "%ISCC%" /Q /DVariant=%VARIANT% /DDistDir=%DISTDIR%\Holos installer.iss && echo  Інсталятор готовий: тека dist\
+    "%ISCC%" /Q /DVariant=%VARIANT% /DDistDir=%DISTDIR%\Holos /DAppVersion=%APPVER% installer.iss && echo  Інсталятор готовий: тека dist\
 ) else (
     echo  (Щоб отримати Holos-Setup.exe: встановіть Inno Setup 6 і запустіть build.bat ще раз)
 )
