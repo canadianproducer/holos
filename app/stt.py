@@ -9,7 +9,7 @@ import time
 import numpy as np
 import sounddevice as sd
 
-from common import add_cuda_dll_dirs, pick_stt_device
+from common import add_cuda_dll_dirs, pick_stt_device, redact
 
 SR = 16000
 BLOCK = 480  # 30 мс
@@ -160,7 +160,13 @@ class Transcriber:
             without_timestamps=True,
         )
         text = " ".join(s.text.strip() for s in segments).strip()
-        logging.info("Розпізнано (%s, %.1f с аудіо, %.2f с): %s", info.language, audio.size / SR, time.time() - t, text)
+        logging.info(
+            "Розпізнано (%s, %.1f с аудіо, %.2f с): %s",
+            info.language,
+            audio.size / SR,
+            time.time() - t,
+            redact(text, self.cfg),
+        )
         return self.clean(text)
 
     def clean(self, text: str) -> str:
