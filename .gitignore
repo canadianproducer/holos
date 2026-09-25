@@ -9,3 +9,4 @@ portable.txt
 test_run.bat
 *.spec.bak
 dist-release/
+fix-history.bat
