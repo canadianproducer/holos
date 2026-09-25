@@ -1,5 +1,9 @@
 # Голос (Holos)
 
+[![CI](https://github.com/canadianproducer/holos/actions/workflows/ci.yml/badge.svg)](https://github.com/canadianproducer/holos/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/canadianproducer/holos)](https://github.com/canadianproducer/holos/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+
 **Диктування і читання вголос для Windows. Працює на вашому комп'ютері, без інтернету й підписок. Українська — в пріоритеті.**
 
 *[English below](#english)*
@@ -19,7 +23,7 @@
 
 ## Встановлення
 
-1. Відкрийте сторінку **[Releases](../../releases/latest)** і завантажте `Holos-Setup.exe`.
+1. Відкрийте сторінку **[Releases](../../releases/latest)** і завантажте `Holos-Setup-<версія>.exe`.
 2. Запустіть його. Windows може показати синє вікно «Windows захистила ваш комп'ютер» — це нормально для нових програм без платного підпису. Натисніть **«Докладніше» → «Однаково запустити»**.
 3. Під час першого запуску програма один раз завантажить мовні моделі (~3 ГБ, 5–15 хвилин). Далі все працює офлайн.
    - Якщо у вас відеокарта **NVIDIA**, у тому ж вікні буде галочка «Прискорення на відеокарті» (+1,4 ГБ) — розпізнавання стане майже миттєвим.
@@ -40,10 +44,18 @@ ollama pull qwen3:8b
 
 Програма сама перевіряє, чи вийшла нова версія. Якщо так — запитає «Оновити зараз?», завантажить і встановить її сама. Налаштування й моделі зберігаються.
 
+Перед встановленням оновлення перевіряється контрольна сума SHA-256 файлу, опублікована GitHub: пошкоджений чи підмінений файл не запуститься.
+
 ## Налаштування
 
 Правий клік на іконці в треї: мова диктування, голос читання, швидкість, очищення, автозапуск.
 Детальніші налаштування — у файлі `config.json` (пункт «Налаштування» в меню). Наприклад, у `vocabulary` можна додати свої слова й назви, які треба писати саме так (імена, бренди, терміни).
+
+## Приватність
+
+- Розпізнавання, озвучення й очищення тексту працюють на вашому комп'ютері. Інтернет потрібен лише для першого завантаження моделей і перевірки оновлень на GitHub.
+- Текст диктовок **не пишеться** в журнал помилок, тож журнал можна спокійно прикладати до Issue. Для діагностики це можна ввімкнути: `"log_text": true` у `config.json`.
+- Історія диктувань зберігається локально (`logs\history.txt`, меню «Історія диктувань»). Вимкнути: `"save_history": false`.
 
 ## Щось не працює?
 
@@ -52,17 +64,22 @@ ollama pull qwen3:8b
 
 ## Для розробників
 
-Код на Python: `faster-whisper` (розпізнавання), StyleTTS2 (українські голоси), Piper (російська/англійська), tkinter + pystray (інтерфейс).
+Код на Python 3.11: `faster-whisper` (розпізнавання), StyleTTS2 (українські голоси), Piper (російська/англійська), tkinter + pystray (інтерфейс). Як влаштовано — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); порядок роботи з гілками й випусками — [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```
-build.bat        # збирає dist\Holos\Holos.exe (потрібні лише інтернет і git)
-build.bat cpu    # версія для будь-якого ПК
-build.bat gpu    # з прискоренням NVIDIA (torch CUDA)
-release.bat      # код на GitHub + інсталятор + завантаження в Releases (одним кліком)
-Holos.exe --selftest   # перевірка всіх рушіїв без інтерфейсу
+build.bat              # збирає dist\Holos\Holos.exe (потрібні лише інтернет і git)
+build.bat cpu | gpu    # для будь-якого ПК / з прискоренням NVIDIA (torch CUDA)
+build.bat release      # як у релізі: CPU-збірка + інсталятор (Inno Setup)
+Holos.exe --selftest   # перевірка всіх рушіїв з моделями
+Holos.exe --smoke      # перевірка самої збірки, без моделей
+
+pip install -r requirements-dev.txt
+pytest                 # модульні тести (будь-яка ОС)
+ruff check . && ruff format --check .
+pre-commit install     # ці перевірки перед кожним комітом
 ```
 
-Структура: `app/holos.py` — інтерфейс і логіка, `stt.py` — запис і розпізнавання, `tts.py` — озвучення, `cleanup.py` — розумне очищення, `hotkeys.py`, `winutil.py` — робота з Windows.
+Релізи збирає GitHub Actions: тег `vX.Y.Z` → збірка на чистій Windows-машині → автоматичні перевірки → реліз з інсталятором і `SHA256SUMS.txt`.
 
 Pull requests і ідеї — вітаються!
 
@@ -87,7 +104,7 @@ Pull requests і ідеї — вітаються!
 
 ## Ліцензія
 
-[GPL-3.0](LICENSE). Моделі голосів і розпізнавання мають власні ліцензії (див. їхні сторінки). Зокрема, англійський чоловічий голос Piper «ryan» — лише для некомерційного використання.
+[GPL-3.0](LICENSE). Моделі голосів і розпізнавання мають власні ліцензії — див. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Зокрема, англійський чоловічий голос Piper «ryan» — лише для некомерційного використання.
 
 ---
 
@@ -101,6 +118,6 @@ Pull requests і ідеї — вітаються!
 - **Smart cleanup (optional):** a local LLM via Ollama removes filler words and self-corrections, fixes punctuation, never translates.
 - **Private:** everything runs locally.
 
-Download `Holos-Setup.exe` from [Releases](../../releases/latest). First launch downloads models (~3 GB) once.
+Download `Holos-Setup-<version>.exe` from [Releases](../../releases/latest). First launch downloads models (~3 GB) once. Updates are verified against GitHub's SHA-256 checksums; dictated text is never written to logs.
 
 Made by **Oleksandr Potapenko (Canadian Producer)**. The code was written in pair with the AI assistant Claude. Licensed under GPL-3.0.
