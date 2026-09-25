@@ -26,6 +26,10 @@ if /i "%VARIANT%"=="gpu" (set "TORCH_INDEX=https://download.pytorch.org/whl/cu12
 echo.
 echo === Варіант збірки: %VARIANT% ===
 
+rem pinned toolchain versions (reproducible builds)
+set "UV_VERSION=0.12.19"
+set "PY_VERSION=3.11.16"
+
 set "B=%~dp0.build"
 set "UV_PYTHON_INSTALL_DIR=%B%\python"
 set "UV_CACHE_DIR=%B%\uv-cache"
@@ -36,7 +40,7 @@ set "UV=%B%\uv.exe"
 if not exist "%UV%" if exist "%B%\bin\uv.exe" set "UV=%B%\bin\uv.exe"
 if not exist "%UV%" (
     echo [1/5] Завантажую uv...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:UV_INSTALL_DIR='%B%'; $env:UV_NO_MODIFY_PATH='1'; irm https://astral.sh/uv/install.ps1 | iex"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:UV_INSTALL_DIR='%B%'; $env:UV_NO_MODIFY_PATH='1'; irm https://astral.sh/uv/%UV_VERSION%/install.ps1 | iex"
     if exist "%B%\bin\uv.exe" set "UV=%B%\bin\uv.exe"
 )
 if not exist "%UV%" ( echo ПОМИЛКА: uv не встановився & goto :fail )
@@ -45,7 +49,7 @@ rem --- 2. Python 3.11 venv (uv-managed Python always has tkinter) ---
 echo [2/5] Python 3.11...
 rem separate env per variant: CPU and CUDA torch cannot share one
 if not exist "%B%\env-%VARIANT%\Scripts\python.exe" (
-    "%UV%" venv "%B%\env-%VARIANT%" --python 3.11 --python-preference only-managed || goto :fail
+    "%UV%" venv "%B%\env-%VARIANT%" --python %PY_VERSION% --python-preference only-managed || goto :fail
 )
 set "PY=%B%\env-%VARIANT%\Scripts\python.exe"
 "%PY%" -c "import tkinter" || ( echo ПОМИЛКА: у Python немає tkinter & goto :fail )
