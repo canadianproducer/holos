@@ -68,6 +68,10 @@ echo [5/5] Збираю Holos.exe...
 set "DISTDIR=dist"
 if defined RELEASE set "DISTDIR=dist-release"
 "%PY%" -m PyInstaller --noconfirm --clean --distpath "%DISTDIR%" holos.spec || goto :fail
+rem licenses shipped with the program (GPL-3.0 + third-party components)
+copy /y LICENSE "%DISTDIR%\Holos\LICENSE.txt" >nul || goto :fail
+copy /y THIRD_PARTY_NOTICES.md "%DISTDIR%\Holos\THIRD_PARTY_NOTICES.md" >nul || goto :fail
+"%PY%" tools\third_party_licenses.py > "%DISTDIR%\Holos\THIRD_PARTY_LICENSES.md" || goto :fail
 
 echo.
 echo ============================================================

@@ -21,13 +21,16 @@
 Номер версії записано в одному місці — `app/common.py` (`VERSION`); `build.bat` передає його в інсталятор.
 
 ## Випуск
-1. Усі зміни злиті в `main`; у `CHANGELOG.md` розділ `[Unreleased]` описує їх.
-2. Гілка `release/X.Y.Z`: оновити `VERSION` в `app/common.py`, перенести `[Unreleased]` у `[X.Y.Z] — дата`,
-   оновити `release_notes.md` (текст для сторінки релізу).
+1. Усі зміни злиті в `main`; у `CHANGELOG.md` розділ `[Unreleased]` описує їх; CI зелений.
+2. Гілка `release/X.Y.Z`: оновити `VERSION` в `app/common.py`, перенести `[Unreleased]` у `[X.Y.Z] — дата`.
    Коміт `chore(release): X.Y.Z` → злиття в `main` → анотований тег `vX.Y.Z`.
-3. `release.bat` — перевіряє, що все закомічено і тег є, відправляє `main` і тег на GitHub,
-   збирає інсталятор і завантажує його в GitHub Releases.
-4. Уже випущений тег не переписуємо. Помилка в релізі → наступна PATCH-версія.
+3. `release.bat` — перевіряє версію, розділ у CHANGELOG і тег, відправляє `main` і тег на GitHub.
+4. Далі все робить GitHub Actions (`release.yml`): збірка на чистій Windows-машині тим самим `build.bat`,
+   модульні тести, smoke-тест exe, тихе встановлення/запуск/видалення, `SHA256SUMS.txt`,
+   публікація релізу з текстом із CHANGELOG. Якщо хоч одна перевірка не пройшла — релізу не буде.
+5. Уже випущений тег не переписуємо. Помилка в релізі → наступна PATCH-версія.
+
+Тестова збірка без публікації: GitHub → Actions → Release → Run workflow (файл — у Artifacts).
 
 ## Залежності
 - `requirements.txt` — прямі залежності з точними версіями (git-архіви — за хешем коміту).
@@ -36,6 +39,11 @@
   перегенерувати `requirements.lock`.
 
 ## Перевірки
+Локально: `pip install -r requirements-dev.txt`, потім `pytest`, `ruff check .`, `ruff format --check .`
+(або один раз `pre-commit install` — і це робиться перед кожним комітом).
+
 GitHub Actions (`.github/workflows/ci.yml`) на кожен push у `main` і кожен Pull Request:
-синтаксис, помилки коду (ruff), і що для поточної `VERSION` є розділ у `CHANGELOG.md`.
-Перед випуском додатково: `build.bat`, `Holos.exe --selftest`, ручна перевірка диктування й читання.
+ruff (помилки, стиль, безпека), тести на Linux і Windows, розділ у `CHANGELOG.md` для поточної `VERSION`.
+Перед випуском додатково вручну: `Holos.exe --selftest`, диктування й читання на реальному ПК.
+
+Кожна зміна поведінки — з тестом, якщо логіку можна перевірити без мікрофона й моделей.
