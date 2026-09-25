@@ -5,26 +5,41 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
-    runs-on: windows-latest
+  lint:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-
-      - name: Syntax check
-        run: python -m compileall -q app
-
-      - name: Lint (errors only)
-        run: |
-          pip install ruff==0.16.9
-          ruff check --select E9,F app
-
+      - run: pip install -r requirements-dev.txt
+      - name: Ruff (lint)
+        run: ruff check .
+      - name: Ruff (format)
+        run: ruff format --check .
       - name: Version is described in CHANGELOG
-        shell: pwsh
         run: |
-          $v = (Select-String -Path app/common.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
-          if (-not (Select-String -Path CHANGELOG.md -SimpleMatch "## [$v]")) { throw "CHANGELOG.md has no section for $v" }
-          Write-Host "VERSION $v OK"
+          v=$(sed -nE 's/^VERSION = "(.+)"/\1/p' app/common.py)
+          grep -q "^## \[$v\]" CHANGELOG.md || { echo "CHANGELOG.md has no section for $v"; exit 1; }
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
