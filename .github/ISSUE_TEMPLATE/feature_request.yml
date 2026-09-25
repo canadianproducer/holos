@@ -1,0 +1,10 @@
+name: Ідея чи побажання
+description: Запропонувати нову можливість
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Що хочеться і навіщо
+    validations:
+      required: true

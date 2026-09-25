@@ -11,7 +11,10 @@
   #define Suffix "-" + Variant
 #endif
 #define AppName "Голос"
-#define AppVersion "0.3.1"
+; версія передається з build.bat (береться з app\common.py)
+#ifndef AppVersion
+  #define AppVersion "0.0.0-dev"
+#endif
 
 [Setup]
 AppId={{6C1E2B7A-4F4B-4E8B-9C2A-5A1D0C0F0001}

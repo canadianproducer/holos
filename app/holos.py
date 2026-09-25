@@ -1,6 +1,6 @@
 """Голос — диктування і читання вслух для Windows. Точка входу."""
 import common  # noqa: F401  (перший імпорт: задає теки моделей)
-from common import VERSION, APP_DIR, RES_DIR, Config, CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, ROOT, setup_logging
+from common import VERSION, RES_DIR, Config, CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, ROOT, setup_logging
 
 import io
 import logging

@@ -1,12 +1,39 @@
+# --- Build output and local toolchain ---
 .build/
-dist/
 build/
+dist/
+dist-release/
+*.spec.bak
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- Runtime data (models, settings, logs) - never commit ---
 models/
 logs/
+data/
 config.json
-__pycache__/
 portable.txt
+/.*.wav
+
+# --- Secrets ---
+.env
+*.token
+*.pem
+
+# --- Local helper scripts ---
 test_run.bat
-*.spec.bak
-dist-release/
 fix-history.bat
+
+# --- OS / editors ---
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

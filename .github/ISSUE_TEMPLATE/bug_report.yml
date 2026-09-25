@@ -1,0 +1,30 @@
+name: Щось не працює
+description: Повідомити про помилку
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Версія «Голосу»
+      description: "Меню іконки в треї → перший рядок («Стан: … · v0.3.1»)"
+      placeholder: v0.3.1
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows і відеокарта
+      placeholder: Windows 11, NVIDIA RTX 3060 / без відеокарти
+  - type: textarea
+    id: what
+    attributes:
+      label: Що сталося і що ви очікували
+      description: Кроки, щоб повторити, якщо відомі.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Журнал
+      description: "Меню трею → «Журнал помилок». Вставте останні рядки."
+      render: text
