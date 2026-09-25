@@ -76,7 +76,7 @@ copy /y THIRD_PARTY_NOTICES.md "%DISTDIR%\Holos\THIRD_PARTY_NOTICES.md" >nul || 
 echo.
 echo ============================================================
 echo  ГОТОВО:  %DISTDIR%\Holos\Holos.exe
-echo  Швидка перевірка без інтерфейсу:  dist\Holos\Holos.exe --selftest
+echo  Швидка перевірка без інтерфейсу:  %DISTDIR%\Holos\Holos.exe --selftest
 echo ============================================================
 
 rem --- Installer (if Inno Setup 6 is installed; "build.bat release" installs it via winget) ---

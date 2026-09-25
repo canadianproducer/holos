@@ -43,7 +43,7 @@ def parse_release(data: dict, repo: str, current: str = VERSION) -> dict | None:
     asset = next((a for a in assets if _is_installer(a.get("name", ""))), None)
     sums = next((a for a in assets if a.get("name") == SUMS_NAME), None)
     url = asset.get("browser_download_url") if asset else None
-    if url and not url.startswith(f"https://github.com/{repo}/releases/download/"):
+    if url and not url.lower().startswith(f"https://github.com/{repo}/releases/download/".lower()):
         logging.warning("Оновлення: неочікуване посилання на файл — ігнорую: %s", url)
         url = None
     digest = (asset or {}).get("digest") or ""

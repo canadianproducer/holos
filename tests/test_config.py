@@ -58,3 +58,13 @@ def test_history_rotates(tmp_path):
     common.append_history("новий рядок", path=path, max_bytes=50)
     assert (tmp_path / "history.1.txt").read_text(encoding="utf-8") == "x" * 100
     assert path.read_text(encoding="utf-8").endswith("новий рядок\n")
+
+
+def test_old_logs_with_dictation_are_purged_once(tmp_path):
+    (tmp_path / "holos.log").write_text("Розпізнано: секретний текст", encoding="utf-8")
+    (tmp_path / "holos.log.1").write_text("ще текст", encoding="utf-8")
+    common.purge_unredacted_logs(tmp_path)
+    assert not list(tmp_path.glob("holos.log*"))
+    (tmp_path / "holos.log").write_text("новий журнал", encoding="utf-8")
+    common.purge_unredacted_logs(tmp_path)  # вдруге — нічого не видаляє
+    assert (tmp_path / "holos.log").exists()

@@ -208,8 +208,29 @@ def append_history(text: str, path: Path = HISTORY_PATH, max_bytes: int = HISTOR
         logging.warning("Історія не записана: %s", e)
 
 
+LOG_REDACTED_MARKER = LOGS / ".log-redacted-v1"
+
+
+def purge_unredacted_logs(logs_dir: Path = LOGS):
+    """Разово видаляє журнали версій до 0.4.0: у них записано текст диктовок."""
+    marker = logs_dir / LOG_REDACTED_MARKER.name
+    if marker.exists():
+        return
+    for p in logs_dir.glob("holos.log*"):
+        try:
+            p.unlink()
+        except OSError:
+            pass
+    try:
+        marker.write_text("ok", encoding="utf-8")
+    except OSError:
+        pass
+
+
 def setup_logging():
     from logging.handlers import RotatingFileHandler
+
+    purge_unredacted_logs()
 
     fmt = "%(asctime)s %(levelname)s %(threadName)s: %(message)s"
     handlers = [RotatingFileHandler(LOGS / "holos.log", maxBytes=LOG_MAX_BYTES, backupCount=3, encoding="utf-8")]

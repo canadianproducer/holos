@@ -68,7 +68,11 @@ Type: files; Name: "{userstartup}\Holos.vbs"
 Type: files; Name: "{userstartup}\{#AppName}.lnk"
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Holos"; ValueData: """{app}\Holos.exe"""; Flags: uninsdeletevalue; Tasks: autostart
+; нова установка з галочкою автозапуску — пишемо значення; оновлення — не чіпаємо вибір, зроблений у програмі
+; (крім переходу зі старого автозапуску через теку «Автозавантаження»)
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Holos"; ValueData: """{app}\Holos.exe"""; Flags: uninsdeletevalue; Tasks: autostart; Check: ShouldWriteAutostart
+; при видаленні прибираємо значення, навіть якщо автозапуск увімкнули з меню програми
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Holos"; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
 Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent
@@ -82,6 +86,22 @@ Type: files; Name: "{userstartup}\Holos.vbs"
 Filename: "taskkill"; Parameters: "/IM Holos.exe /F"; Flags: runhidden; RunOnceId: "KillHolos"
 
 [Code]
+var
+  WasInstalled, HadLegacyAutostart: Boolean;
+
+function InitializeSetup: Boolean;
+begin
+  WasInstalled := RegKeyExists(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{6C1E2B7A-4F4B-4E8B-9C2A-5A1D0C0F0001}_is1');
+  HadLegacyAutostart := FileExists(ExpandConstant('{userstartup}\Holos.vbs'))
+    or FileExists(ExpandConstant('{userstartup}\{#AppName}.lnk'));
+  Result := True;
+end;
+
+function ShouldWriteAutostart: Boolean;
+begin
+  Result := (not WasInstalled) or HadLegacyAutostart;
+end;
+
 // Після тихого оновлення з програми перезапускаємо «Голос».
 // /NOLAUNCH — не запускати (автоматичні перевірки в CI).
 function ShouldRelaunch: Boolean;

@@ -13,9 +13,11 @@ if not defined VER ( echo Cannot read VERSION from app\common.py & goto :fail )
 findstr /b /l /c:"## [%VER%]" CHANGELOG.md >nul || ( echo CHANGELOG.md has no section [%VER%] & goto :fail )
 git rev-parse -q --verify "refs/tags/v%VER%" >nul || ( echo Tag v%VER% not found. Create it after merging the release branch. & goto :fail )
 git merge-base --is-ancestor "v%VER%" main || ( echo Tag v%VER% is not on main. & goto :fail )
+for /f %%t in ('git cat-file -t "v%VER%"') do if not "%%t"=="tag" ( echo Tag v%VER% must be annotated: git tag -a v%VER% -m "Holos %VER%" & goto :fail )
 echo === Releasing Holos %VER% ===
 
 call "%~dp0publish.bat" || goto :fail
+git push origin "refs/tags/v%VER%" || goto :fail
 echo.
 echo ============================================================
 echo  Tag v%VER% pushed. GitHub is building the installer now (~20-30 min):

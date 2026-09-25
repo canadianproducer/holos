@@ -52,7 +52,7 @@ jobs:
           key: build-${{ runner.os }}-${{ hashFiles('requirements.lock', 'build.bat') }}
 
       - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
+        run: choco install innosetup --version 6.7.1 -y --no-progress
 
       - name: Build (same script as locally)
         shell: cmd
@@ -65,7 +65,7 @@ jobs:
         run: |
           $env:HOLOS_DATA_DIR = "$env:RUNNER_TEMP\smoke-dist"
           $p = Start-Process dist-release\Holos\Holos.exe -ArgumentList '--smoke' -Wait -PassThru
-          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt"
+          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "Smoke test failed ($($p.ExitCode))" }
 
       - name: Smoke test — install, run, uninstall
@@ -79,7 +79,7 @@ jobs:
           if ($p.ExitCode -ne 0) { Get-Content $log; throw "Installer failed ($($p.ExitCode))" }
           $env:HOLOS_DATA_DIR = "$env:RUNNER_TEMP\smoke-installed"
           $s = Start-Process "$dir\Holos.exe" -ArgumentList '--smoke' -Wait -PassThru
-          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt"
+          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt" -ErrorAction SilentlyContinue
           if ($s.ExitCode -ne 0) { throw "Installed app smoke test failed ($($s.ExitCode))" }
           $u = Start-Process "$dir\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait -PassThru
           if ($u.ExitCode -ne 0) { throw "Uninstaller failed ($($u.ExitCode))" }
@@ -94,7 +94,7 @@ jobs:
             "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
           } | Set-Content -Encoding ascii release\SHA256SUMS.txt
           Get-Content release\SHA256SUMS.txt
-          python tools/release_notes.py $v | Set-Content -Encoding utf8 release\notes.md
+          python tools/release_notes.py $v release\notes.md
 
       - uses: actions/upload-artifact@v7
         with:
