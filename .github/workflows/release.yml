@@ -1,0 +1,125 @@
+# Збірка інсталятора на чистій машині GitHub і публікація релізу.
+#   - тег vX.Y.Z  -> збірка, перевірки, реліз з інсталятором і SHA256SUMS.txt
+#   - вручну (Actions -> Release -> Run workflow) -> лише збірка, файл у Artifacts
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path app/common.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$v") {
+            throw "Tag $env:GITHUB_REF_NAME does not match VERSION $v in app/common.py"
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Unit tests
+        run: |
+          pip install -r requirements-dev.txt
+          pytest
+
+      - name: Cache Python and packages
+        uses: actions/cache@v6
+        with:
+          path: |
+            .build/python
+            .build/uv-cache
+          key: build-${{ runner.os }}-${{ hashFiles('requirements.lock', 'build.bat') }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build (same script as locally)
+        shell: cmd
+        env:
+          NOPAUSE: "1"
+        run: build.bat release
+
+      - name: Smoke test — built exe
+        shell: pwsh
+        run: |
+          $env:HOLOS_DATA_DIR = "$env:RUNNER_TEMP\smoke-dist"
+          $p = Start-Process dist-release\Holos\Holos.exe -ArgumentList '--smoke' -Wait -PassThru
+          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt"
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed ($($p.ExitCode))" }
+
+      - name: Smoke test — install, run, uninstall
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $dir = "$env:RUNNER_TEMP\holos-install"
+          $log = "$env:RUNNER_TEMP\setup.log"
+          $p = Start-Process "dist\Holos-Setup-$v.exe" -Wait -PassThru -ArgumentList `
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOLAUNCH', '/TASKS=""', "/DIR=`"$dir`"", "/LOG=`"$log`""
+          if ($p.ExitCode -ne 0) { Get-Content $log; throw "Installer failed ($($p.ExitCode))" }
+          $env:HOLOS_DATA_DIR = "$env:RUNNER_TEMP\smoke-installed"
+          $s = Start-Process "$dir\Holos.exe" -ArgumentList '--smoke' -Wait -PassThru
+          Get-Content "$env:HOLOS_DATA_DIR\logs\smoke.txt"
+          if ($s.ExitCode -ne 0) { throw "Installed app smoke test failed ($($s.ExitCode))" }
+          $u = Start-Process "$dir\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "Uninstaller failed ($($u.ExitCode))" }
+
+      - name: Checksums and release notes
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item "dist\Holos-Setup-$v.exe" release\
+          Get-ChildItem release\*.exe | ForEach-Object {
+            "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content -Encoding ascii release\SHA256SUMS.txt
+          Get-Content release\SHA256SUMS.txt
+          python tools/release_notes.py $v | Set-Content -Encoding utf8 release\notes.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: holos-${{ steps.ver.outputs.version }}
+          path: release/
+          retention-days: 14
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: holos-${{ needs.build.outputs.version }}
+          path: release
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Голос $VERSION" --notes-file release/notes.md \
+            release/Holos-Setup-*.exe release/SHA256SUMS.txt
