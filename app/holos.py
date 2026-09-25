@@ -823,7 +823,7 @@ def selftest() -> int:
     """holos.exe --selftest : перевірка всіх рушіїв без інтерфейсу (для діагностики)."""
     import numpy as np
 
-    out = open(LOGS / "selftest.txt", "w", encoding="utf-8")
+    out = open(LOGS / "selftest.txt", "w", encoding="utf-8")  # закривається у finally
 
     def say(*a):
         msg = " ".join(str(x) for x in a)
@@ -859,9 +859,64 @@ def selftest() -> int:
         say(traceback.format_exc())
         say("SELFTEST FAILED")
         return 1
+    finally:
+        out.close()
+
+
+SMOKE_MODULES = [
+    # сторонні бібліотеки, які PyInstaller мав покласти в збірку
+    "numpy",
+    "sounddevice",
+    "soundfile",
+    "ctranslate2",
+    "faster_whisper",
+    "torch",
+    "onnxruntime",
+    "piper",
+    "styletts2_inference",
+    "ukrainian_word_stress",
+    "ipa_uk",
+    "stanza",
+    "transformers.models.m2m_100",
+    "huggingface_hub",
+    "pystray",
+    "PIL.Image",
+    "keyboard",
+    "pyperclip",
+    # власні модулі
+    "stt",
+    "tts",
+    "cleanup",
+    "updater",
+    "cuda_pack",
+    "hotkeys",
+    "download_models",
+]
+
+
+def smoke() -> int:
+    """holos.exe --smoke : перевірка самої збірки (CI) — усе імпортується; моделі не потрібні.
+    Результат — у logs/smoke.txt і в коді виходу."""
+    import importlib
+    import traceback
+
+    lines, failed = [f"Holos {VERSION}"], 0
+    for name in SMOKE_MODULES:
+        try:
+            importlib.import_module(name)
+            lines.append(f"ok    {name}")
+        except Exception:
+            failed += 1
+            lines.append(f"FAIL  {name}\n{traceback.format_exc()}")
+    lines.append("SMOKE OK" if not failed else f"SMOKE FAILED: {failed}")
+    (LOGS / "smoke.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\n".join(lines), flush=True)
+    return 1 if failed else 0
 
 
 def main():
+    if "--smoke" in sys.argv:
+        sys.exit(smoke())
     if "--selftest" in sys.argv:
         sys.exit(selftest())
     if "--download" in sys.argv:  # завантаження моделей без вікна

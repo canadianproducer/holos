@@ -106,7 +106,9 @@ class UkEngine:
         self.model = StyleTTS2(hf_path=STYLETTS_REPO, device=device)
         self.voices = {p.stem: torch.load(p, map_location=device) for p in VOICES_DIR.glob("*.pt")}
         if not self.voices:
-            raise RuntimeError("Немає українських голосів у models/voices — запустіть install.bat ще раз")
+            raise RuntimeError(
+                "Немає українських голосів у models/voices — запустіть «Голос» з параметром --download або перевстановіть"
+            )
 
     def synth(self, text, voice, speed):
         t = text.strip().replace('"', "").replace("«", "").replace("»", "")
