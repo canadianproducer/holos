@@ -6,7 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 FROZEN = getattr(sys, "frozen", False)
 # У віконному exe немає консолі: stdout/stderr = None, і бібліотеки (tqdm тощо) падають при друку.
 if sys.stdout is None:
