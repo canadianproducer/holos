@@ -11,7 +11,7 @@
   #define Suffix "-" + Variant
 #endif
 #define AppName "Голос"
-#define AppVersion "0.3.0"
+#define AppVersion "0.3.1"
 
 [Setup]
 AppId={{6C1E2B7A-4F4B-4E8B-9C2A-5A1D0C0F0001}
