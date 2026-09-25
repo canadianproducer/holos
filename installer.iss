@@ -51,12 +51,22 @@ Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 Name: "{group}\{#AppName}"; Filename: "{app}\Holos.exe"
 Name: "{group}\Видалити {#AppName}"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\Holos.exe"; Tasks: desktopicon
-Name: "{userstartup}\{#AppName}"; Filename: "{app}\Holos.exe"; Tasks: autostart
+
+[InstallDelete]
+; старий автозапуск (до 0.3.1) — через нього при старті Windows вискакувала помилка Holos.vbs
+Type: files; Name: "{userstartup}\Holos.vbs"
+Type: files; Name: "{userstartup}\{#AppName}.lnk"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Holos"; ValueData: """{app}\Holos.exe"""; Flags: uninsdeletevalue; Tasks: autostart
 
 [Run]
 Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent
 ; після тихого оновлення з програми — запускаємо нову версію
 Filename: "{app}\Holos.exe"; Flags: nowait; Check: WizardSilent
+
+[UninstallDelete]
+Type: files; Name: "{userstartup}\Holos.vbs"
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM Holos.exe /F"; Flags: runhidden; RunOnceId: "KillHolos"
