@@ -1,12 +1,22 @@
 """Завантаження моделей у теку даних (один раз, при першому запуску)."""
-import common  # noqa: F401
-from common import (PIPER_DIR, PIPER_VOICES, READY_FLAG, STYLETTS_REPO, STYLETTS_VOICES_SPACE,
-                    VERBALIZER_MODEL, VERBALIZER_TOKENIZER, VOICES_DIR, Config)
 
 import logging
 import shutil
 import sys
 from pathlib import Path
+
+import common  # noqa: F401
+from common import (
+    PIPER_DIR,
+    PIPER_VOICES,
+    READY_FLAG,
+    STYLETTS_REPO,
+    STYLETTS_VOICES_SPACE,
+    VERBALIZER_MODEL,
+    VERBALIZER_TOKENIZER,
+    VOICES_DIR,
+    Config,
+)
 
 STEPS = [
     "Розпізнавання мовлення (Whisper, ~1.6 ГБ)",
@@ -20,11 +30,13 @@ STEPS = [
 
 def download_all(progress=lambda i, n, msg: print(f"[{i}/{n}] {msg}", flush=True)):
     from huggingface_hub import hf_hub_download, snapshot_download
+
     cfg = Config()
     n = len(STEPS)
 
     progress(1, n, STEPS[0])
     from faster_whisper import download_model
+
     download_model(cfg["stt_model"])
 
     progress(2, n, STEPS[1])
@@ -38,6 +50,7 @@ def download_all(progress=lambda i, n, msg: print(f"[{i}/{n}] {msg}", flush=True
 
     progress(4, n, STEPS[3])
     from ukrainian_word_stress import Stressifier
+
     Stressifier()  # саме скачує дані stanza
 
     progress(5, n, STEPS[4])

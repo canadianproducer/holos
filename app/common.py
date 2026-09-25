@@ -1,4 +1,5 @@
 """Шляхи, налаштування, журнал. Імпортується ПЕРШИМ — задає теки для моделей."""
+
 import json
 import logging
 import os
@@ -57,39 +58,49 @@ DEFAULTS = {
     "dictate_hotkey": "right ctrl",
     # Читання виділеного тексту. Повторне натискання або Esc — стоп.
     "read_hotkey": "ctrl+shift+space",
-
     # --- Розпізнавання (faster-whisper) ---
     "stt_model": "large-v3-turbo",
-    "stt_device": "auto",            # auto | cuda | cpu
-    "stt_language": "auto",          # auto | uk | ru | en
-    "mic_always_on": False,          # True = мікрофон відкритий завжди (жодне слово не обріжеться)
-    "mic_device": None,              # None = системний за замовчуванням, або назва/номер пристрою
+    "stt_device": "auto",  # auto | cuda | cpu
+    "stt_language": "auto",  # auto | uk | ru | en
+    "mic_always_on": False,  # True = мікрофон відкритий завжди (жодне слово не обріжеться)
+    "mic_device": None,  # None = системний за замовчуванням, або назва/номер пристрою
     "replacements": {},
     # Слова, які треба писати латиницею / як є (бренди, терміни, імена). Допомагає і Whisper, і очищенню.
-    "vocabulary": ["Claude", "ChatGPT", "GitHub", "Python", "API", "Windows", "YouTube", "Instagram",
-                   "Threads", "Ollama", "Whisper", "ElevenLabs", "Higgsfield", "Canadian Producer",
-                   "UkraineInfo"],              # {"кома": ","} — власні заміни після розпізнавання
+    "vocabulary": [
+        "Claude",
+        "ChatGPT",
+        "GitHub",
+        "Python",
+        "API",
+        "Windows",
+        "YouTube",
+        "Instagram",
+        "Threads",
+        "Ollama",
+        "Whisper",
+        "ElevenLabs",
+        "Higgsfield",
+        "Canadian Producer",
+        "UkraineInfo",
+    ],  # {"кома": ","} — власні заміни після розпізнавання
     "restore_clipboard": True,
     # «Розумне очищення» через локальну Ollama: auto (якщо Ollama запущена) | off
     "cleanup": "auto",
-    "cleanup_model": "",             # порожньо = обрати автоматично з встановлених
+    "cleanup_model": "",  # порожньо = обрати автоматично з встановлених
     "cleanup_timeout": 12,
-
     # --- Читання ---
-    "tts_device": "auto",            # auto | cuda | cpu
+    "tts_device": "auto",  # auto | cuda | cpu
     "uk_voice": "Марина Панас",
-    "ru_voice": "female",            # female | male
+    "ru_voice": "female",  # female | male
     "en_voice": "female",
-    "default_cyrillic": "uk",        # якою мовою читати кирилицю без явних ознак (uk/ru)
+    "default_cyrillic": "uk",  # якою мовою читати кирилицю без явних ознак (uk/ru)
     "speed": 1.0,
-    "verbalize_numbers": True,       # «1890 року» -> «тисяча вісімсот дев'яностого року»
-
+    "verbalize_numbers": True,  # «1890 року» -> «тисяча вісімсот дев'яностого року»
     # --- Оновлення: репозиторій GitHub з релізами ("owner/repo"), порожньо = не перевіряти ---
     "update_repo": "canadianproducer/holos",
-
     # --- Інтерфейс ---
     "sounds": True,
-    "overlay_position": "bottom",    # bottom | top
+    "overlay_position": "bottom",  # bottom | top
 }
 
 PIPER_VOICES = {
@@ -139,10 +150,11 @@ def setup_logging():
 
     def hook(exc_type, exc, tb):
         logging.critical("Необроблена помилка", exc_info=(exc_type, exc, tb))
+
     sys.excepthook = hook
     threading.excepthook = lambda a: logging.critical(
-        "Помилка в потоці %s", a.thread.name if a.thread else "?",
-        exc_info=(a.exc_type, a.exc_value, a.exc_traceback))
+        "Помилка в потоці %s", a.thread.name if a.thread else "?", exc_info=(a.exc_type, a.exc_value, a.exc_traceback)
+    )
 
 
 def add_cuda_dll_dirs():
@@ -151,11 +163,13 @@ def add_cuda_dll_dirs():
         return
     try:
         import cuda_pack
-        cuda_pack.add_to_path()          # пакет прискорення, докачаний при першому запуску
+
+        cuda_pack.add_to_path()  # пакет прискорення, докачаний при першому запуску
     except Exception as e:
         logging.warning("cuda_pack: %s", e)
     try:
         import torch  # noqa: F401
+
         lib = Path(torch.__file__).parent / "lib"
         if lib.exists():
             os.add_dll_directory(str(lib))
@@ -169,6 +183,7 @@ def cuda_libs_available() -> bool:
     dirs = [MODELS / "cuda"]
     try:
         import importlib.util
+
         spec = importlib.util.find_spec("torch")
         if spec and spec.origin:
             dirs.append(Path(spec.origin).parent / "lib")
@@ -182,9 +197,10 @@ def pick_stt_device(pref: str) -> str:
     if pref in ("cuda", "cpu"):
         return pref
     if not cuda_libs_available():
-        return "cpu"   # без cuDNN ctranslate2 може аварійно закрити програму — не ризикуємо
+        return "cpu"  # без cuDNN ctranslate2 може аварійно закрити програму — не ризикуємо
     try:
         import ctranslate2
+
         return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
     except Exception:
         return "cpu"
@@ -195,6 +211,7 @@ def pick_device(pref: str) -> str:
         return pref
     try:
         import torch
+
         return "cuda" if torch.cuda.is_available() else "cpu"
     except Exception:
         return "cpu"

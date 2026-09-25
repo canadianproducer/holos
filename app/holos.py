@@ -1,6 +1,4 @@
 """Голос — диктування і читання вслух для Windows. Точка входу."""
-import common  # noqa: F401  (перший імпорт: задає теки моделей)
-from common import VERSION, RES_DIR, Config, CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, ROOT, setup_logging
 
 import io
 import logging
@@ -14,7 +12,9 @@ import time
 import tkinter as tk
 import wave
 
+import common  # noqa: F401  (до будь-яких ML-бібліотек: задає теки моделей і змінні HF_*)
 import winutil
+from common import CONFIG_PATH, HISTORY_PATH, LOGS, READY_FLAG, RES_DIR, ROOT, VERSION, Config, setup_logging
 
 setup_logging()
 log = logging.getLogger("holos")
@@ -28,15 +28,33 @@ STATE_TEXT = {
     "loading": ("Завантаження…", ""),
     "error": ("", ""),
 }
-KEY_NAMES = {"right ctrl": "правий Ctrl", "right alt": "правий Alt", "ctrl": "Ctrl", "shift": "Shift",
-             "alt": "Alt", "space": "Пробіл", "win": "Win"}
-COLORS = {"key": "#1e1e23", "bg": "#26262d", "border": "#3a3a44", "fg": "#f2f2f2", "hint": "#9a9aa6",
-          "rec": "#ff4d4f", "busy": "#f5b301", "play": "#3fb68b", "err": "#ff7a45"}
+KEY_NAMES = {
+    "right ctrl": "правий Ctrl",
+    "right alt": "правий Alt",
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "space": "Пробіл",
+    "win": "Win",
+}
+COLORS = {
+    "key": "#1e1e23",
+    "bg": "#26262d",
+    "border": "#3a3a44",
+    "fg": "#f2f2f2",
+    "hint": "#9a9aa6",
+    "rec": "#ff4d4f",
+    "busy": "#f5b301",
+    "play": "#3fb68b",
+    "err": "#ff7a45",
+}
 
 
 def key_label(combo: str) -> str:
-    return "+".join(KEY_NAMES.get(k.strip().lower(), k.strip().upper() if len(k.strip()) == 1 else k.strip())
-                    for k in combo.split("+"))
+    return "+".join(
+        KEY_NAMES.get(k.strip().lower(), k.strip().upper() if len(k.strip()) == 1 else k.strip())
+        for k in combo.split("+")
+    )
 
 
 def _tone(freqs, dur=0.07, vol=0.25, sr=22050):
@@ -76,6 +94,7 @@ def play_sound(path, cfg):
         return
     try:
         import winsound
+
         winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
     except Exception as e:
         log.debug("звук: %s", e)
@@ -84,8 +103,9 @@ def play_sound(path, cfg):
 class Overlay:
     """Округла плашка внизу екрана. Не забирає фокус і пропускає кліки.
     Кути робимо через «прозорий колір» вікна: усе, що має колір COLORS['key'], не малюється."""
+
     W, H, R = 440, 58, 22
-    WAVE_W = 96          # праворуч — окрема зона під хвилю, текст її не перетинає
+    WAVE_W = 96  # праворуч — окрема зона під хвилю, текст її не перетинає
 
     def __init__(self, root, cfg):
         self.root = root
@@ -126,16 +146,46 @@ class Overlay:
             self.visible = False
 
     def _pill(self, x0, y0, x1, y1, r, **kw):
-        pts = [x0 + r, y0, x1 - r, y0, x1, y0, x1, y0 + r, x1, y1 - r, x1, y1, x1 - r, y1,
-               x0 + r, y1, x0, y1, x0, y1 - r, x0, y0 + r, x0, y0]
+        pts = [
+            x0 + r,
+            y0,
+            x1 - r,
+            y0,
+            x1,
+            y0,
+            x1,
+            y0 + r,
+            x1,
+            y1 - r,
+            x1,
+            y1,
+            x1 - r,
+            y1,
+            x0 + r,
+            y1,
+            x0,
+            y1,
+            x0,
+            y1 - r,
+            x0,
+            y0 + r,
+            x0,
+            y0,
+        ]
         return self.cv.create_polygon(pts, smooth=True, splinesteps=24, **kw)
 
     def draw(self, state, title, hint, level):
         cv, W, H = self.cv, self.W, self.H
         cv.delete("all")
         self._pill(1, 1, W - 2, H - 2, self.R, fill=COLORS["bg"], outline=COLORS["border"], width=1)
-        color = {"listening": COLORS["rec"], "listening_toggle": COLORS["rec"], "processing": COLORS["busy"],
-                 "loading": COLORS["busy"], "speaking": COLORS["play"], "error": COLORS["err"]}.get(state, COLORS["fg"])
+        color = {
+            "listening": COLORS["rec"],
+            "listening_toggle": COLORS["rec"],
+            "processing": COLORS["busy"],
+            "loading": COLORS["busy"],
+            "speaking": COLORS["play"],
+            "error": COLORS["err"],
+        }.get(state, COLORS["fg"])
         pulse = 0.5 + 0.5 * math.sin(time.time() * 6)
         r = 6 + (2 * pulse if state in ("processing", "loading", "listening", "listening_toggle") else 0)
         cx, cy = 26, H // 2
@@ -143,13 +193,14 @@ class Overlay:
         listening = state.startswith("listening")
         text_w = W - 50 - (self.WAVE_W + 16 if listening else 16)
         if hint:
-            cv.create_text(46, cy - 9, text=title, fill=COLORS["fg"], anchor="w", width=text_w,
-                           font=("Segoe UI Semibold", 11))
-            cv.create_text(46, cy + 11, text=hint, fill=COLORS["hint"], anchor="w", width=text_w,
-                           font=("Segoe UI", 9))
+            cv.create_text(
+                46, cy - 9, text=title, fill=COLORS["fg"], anchor="w", width=text_w, font=("Segoe UI Semibold", 11)
+            )
+            cv.create_text(46, cy + 11, text=hint, fill=COLORS["hint"], anchor="w", width=text_w, font=("Segoe UI", 9))
         else:
-            cv.create_text(46, cy, text=title, fill=COLORS["fg"], anchor="w", width=text_w,
-                           font=("Segoe UI Semibold", 11))
+            cv.create_text(
+                46, cy, text=title, fill=COLORS["fg"], anchor="w", width=text_w, font=("Segoe UI Semibold", 11)
+            )
         if listening:
             self.levels = self.levels[1:] + [min(1.0, level * 12)]
             x0 = W - self.WAVE_W - 18
@@ -162,7 +213,7 @@ class Overlay:
 class App:
     def __init__(self):
         self.cfg = Config()
-        self.events = queue.Queue()      # (state, text) для інтерфейсу
+        self.events = queue.Queue()  # (state, text) для інтерфейсу
         self.state, self.state_text, self.state_hint = "loading", "Завантаження…", ""
         self.error_until = 0
         self.last_text = ""
@@ -178,13 +229,16 @@ class App:
 
         from stt import Recorder, Transcriber
         from tts import Speaker
+
         self.recorder = Recorder(self.cfg)
         self.transcriber = Transcriber(self.cfg)
         self.speaker = Speaker(self.cfg, self.set_state)
         from cleanup import Cleaner
+
         self.cleaner = Cleaner(self.cfg)
 
         from hotkeys import HotkeyManager
+
         self.hk = HotkeyManager()
         self.hk.esc_callback = self.on_esc
         self.hk.add(self.cfg["dictate_hotkey"], self.on_dictate_down, self.on_dictate_up)
@@ -218,7 +272,11 @@ class App:
                 title, hint = STATE_TEXT.get(state, ("", ""))
                 self.state = state
                 self.state_text = text or title
-                self.state_hint = hint.format(key=key_label(self.cfg["dictate_hotkey"])) if not text or state.startswith("listening") else ""
+                self.state_hint = (
+                    hint.format(key=key_label(self.cfg["dictate_hotkey"]))
+                    if not text or state.startswith("listening")
+                    else ""
+                )
         except queue.Empty:
             pass
         if self.state == "error" and time.time() > self.error_until:
@@ -258,7 +316,7 @@ class App:
             self.set_state("error", "Ще завантажуюсь, зачекайте…")
             return
         if self.recorder.recording:
-            if self.toggle_mode:          # друге натискання в режимі «увімкнув/вимкнув»
+            if self.toggle_mode:  # друге натискання в режимі «увімкнув/вимкнув»
                 self.toggle_mode = False
                 self.finish_recording()
             return
@@ -343,7 +401,8 @@ class App:
         time.sleep(15)
         import updater
         from common import DEFAULTS
-        repo = self.cfg["update_repo"] or DEFAULTS["update_repo"]   # "none" = не перевіряти
+
+        repo = self.cfg["update_repo"] or DEFAULTS["update_repo"]  # "none" = не перевіряти
         self.update = None if repo == "none" else updater.check(repo)
         if self.update:
             log.info("Доступне оновлення %s", self.update["tag"])
@@ -352,28 +411,36 @@ class App:
                     self.tray.update_menu()
             except Exception:
                 pass
-            self.ask_update = True        # діалог покаже головний потік (tkinter — лише з нього)
+            self.ask_update = True  # діалог покаже головний потік (tkinter — лише з нього)
 
     def prompt_update(self):
         from tkinter import messagebox
+
         u = self.update
         notes = ("\n\nЩо нового:\n" + u["notes"]) if u.get("notes") else ""
         if not u.get("asset"):
-            if messagebox.askyesno("Голос", f"Доступна нова версія {u['tag']}.{notes}\n\nВідкрити сторінку завантаження?"):
+            if messagebox.askyesno(
+                "Голос", f"Доступна нова версія {u['tag']}.{notes}\n\nВідкрити сторінку завантаження?"
+            ):
                 import webbrowser
+
                 webbrowser.open(u["page"])
             return
-        if messagebox.askyesno("Голос — оновлення",
-                               f"Доступна нова версія {u['tag']} (у вас {VERSION}).{notes}\n\n"
-                               "Оновити зараз? Налаштування й моделі збережуться."):
+        if messagebox.askyesno(
+            "Голос — оновлення",
+            f"Доступна нова версія {u['tag']} (у вас {VERSION}).{notes}\n\n"
+            "Оновити зараз? Налаштування й моделі збережуться.",
+        ):
             threading.Thread(target=self.install_update, daemon=True).start()
 
     def install_update(self):
         import updater
+
         u = self.update
         try:
-            path = updater.download(u["asset"], u["size"],
-                                    lambda pct: self.set_state("loading", f"Завантажую оновлення… {pct:.0f}%"))
+            path = updater.download(
+                u["asset"], u["size"], lambda pct: self.set_state("loading", f"Завантажую оновлення… {pct:.0f}%")
+            )
             self.set_state("loading", "Встановлюю оновлення…")
             log.info("Оновлення: запускаю %s", path)
             updater.run_installer(path)
@@ -388,6 +455,7 @@ class App:
         try:
             import cuda_pack
             from common import cuda_libs_available
+
             return cuda_pack.has_nvidia() and not cuda_libs_available()
         except Exception:
             return False
@@ -395,6 +463,7 @@ class App:
     def install_gpu_pack(self):
         def work():
             import cuda_pack
+
             try:
                 cuda_pack.install(lambda d, t: self.set_state("loading", f"Прискорення NVIDIA: {d:.0f} / {t} МБ"))
                 self.set_state("loading", "Перезапускаю розпізнавання…")
@@ -406,18 +475,22 @@ class App:
             except Exception as e:
                 log.exception("Пакет прискорення")
                 self.set_state("error", f"Прискорення: {e}"[:60])
+
         threading.Thread(target=work, daemon=True).start()
 
     # ---------- трей ----------
     def update_tray_title(self):
         if self.tray:
             dev = self.transcriber.device or "…"
-            self.tray.title = f"Голос — готовий ({dev.upper()})\n" \
-                              f"Диктування: {self.cfg['dictate_hotkey']}\nЧитання: {self.cfg['read_hotkey']}"
+            self.tray.title = (
+                f"Голос — готовий ({dev.upper()})\n"
+                f"Диктування: {self.cfg['dictate_hotkey']}\nЧитання: {self.cfg['read_hotkey']}"
+            )
 
     def run_tray(self):
         import pystray
         from PIL import Image
+
         from tts import list_uk_voices
 
         try:
@@ -426,10 +499,10 @@ class App:
             img = Image.new("RGBA", (64, 64), (0, 87, 183, 255))
 
         cfg = self.cfg
-        M, I = pystray.Menu, pystray.MenuItem
+        M, Item = pystray.Menu, pystray.MenuItem
 
         def radio(key, value, label):
-            return I(label, lambda: cfg.set(key, value), checked=lambda _: cfg[key] == value, radio=True)
+            return Item(label, lambda: cfg.set(key, value), checked=lambda _: cfg[key] == value, radio=True)
 
         def open_path(p):
             def _open():
@@ -437,41 +510,75 @@ class App:
                     if not p.exists():
                         p.parent.mkdir(parents=True, exist_ok=True)
                         p.write_text("", encoding="utf-8")
-                    os.startfile(str(p))
+                    os.startfile(str(p))  # noqa: S606 — відкрити файл у програмі за замовчуванням
                 except Exception:
                     log.exception("Не вдалося відкрити %s", p)
+
             return _open
 
         voices = list_uk_voices()
         menu = M(
-            I(lambda _: (f"Стан: готовий ({(self.transcriber.device or '').upper()})" if self.ready.is_set()
-                        else "Стан: завантаження…") + f"  ·  v{VERSION}", None, enabled=False),
+            Item(
+                lambda _: (
+                    (
+                        f"Стан: готовий ({(self.transcriber.device or '').upper()})"
+                        if self.ready.is_set()
+                        else "Стан: завантаження…"
+                    )
+                    + f"  ·  v{VERSION}"
+                ),
+                None,
+                enabled=False,
+            ),
             M.SEPARATOR,
-            I("Мова диктування", M(radio("stt_language", "auto", "Автовизначення"),
-                                   radio("stt_language", "uk", "Українська"),
-                                   radio("stt_language", "ru", "Русский"),
-                                   radio("stt_language", "en", "English"))),
-            I("Голос читання (укр.)", M(*[radio("uk_voice", v, v) for v in voices]) if voices else M(
-                I("немає голосів", None, enabled=False))),
-            I("Голос читання (рус./англ.)", M(radio("ru_voice", "female", "Жіночий (рус.)"),
-                                             radio("ru_voice", "male", "Чоловічий (рус.)"),
-                                             radio("en_voice", "female", "Female (EN)"),
-                                             radio("en_voice", "male", "Male (EN)"))),
-            I("Розумне очищення (Ollama)", lambda: cfg.set("cleanup", "off" if cfg["cleanup"] != "off" else "auto"),
-              checked=lambda _: cfg["cleanup"] != "off"),
-            I("Швидкість читання", M(*[radio("speed", s, f"{s:.1f}×") for s in (0.8, 0.9, 1.0, 1.1, 1.2)])),
-            I(lambda _: f"⬆ Оновити до {self.update['tag']}" if self.update else "",
-              lambda: setattr(self, "ask_update", True), visible=lambda _: bool(self.update)),
-            I("⚡ Увімкнути прискорення NVIDIA", self.install_gpu_pack, visible=lambda _: self.gpu_pack_offer()),
+            Item(
+                "Мова диктування",
+                M(
+                    radio("stt_language", "auto", "Автовизначення"),
+                    radio("stt_language", "uk", "Українська"),
+                    radio("stt_language", "ru", "Русский"),
+                    radio("stt_language", "en", "English"),
+                ),
+            ),
+            Item(
+                "Голос читання (укр.)",
+                M(*[radio("uk_voice", v, v) for v in voices])
+                if voices
+                else M(Item("немає голосів", None, enabled=False)),
+            ),
+            Item(
+                "Голос читання (рус./англ.)",
+                M(
+                    radio("ru_voice", "female", "Жіночий (рус.)"),
+                    radio("ru_voice", "male", "Чоловічий (рус.)"),
+                    radio("en_voice", "female", "Female (EN)"),
+                    radio("en_voice", "male", "Male (EN)"),
+                ),
+            ),
+            Item(
+                "Розумне очищення (Ollama)",
+                lambda: cfg.set("cleanup", "off" if cfg["cleanup"] != "off" else "auto"),
+                checked=lambda _: cfg["cleanup"] != "off",
+            ),
+            Item("Швидкість читання", M(*[radio("speed", s, f"{s:.1f}×") for s in (0.8, 0.9, 1.0, 1.1, 1.2)])),
+            Item(
+                lambda _: f"⬆ Оновити до {self.update['tag']}" if self.update else "",
+                lambda: setattr(self, "ask_update", True),
+                visible=lambda _: bool(self.update),
+            ),
+            Item("⚡ Увімкнути прискорення NVIDIA", self.install_gpu_pack, visible=lambda _: self.gpu_pack_offer()),
             M.SEPARATOR,
-            I("Скопіювати останню диктовку", lambda: winutil.clip_set(self.last_text),
-              enabled=lambda _: bool(self.last_text)),
-            I("Історія диктувань", open_path(HISTORY_PATH)),
-            I("Налаштування (config.json)", open_path(CONFIG_PATH)),
-            I("Журнал помилок", open_path(LOGS / "holos.log")),
-            I("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_enabled()),
+            Item(
+                "Скопіювати останню диктовку",
+                lambda: winutil.clip_set(self.last_text),
+                enabled=lambda _: bool(self.last_text),
+            ),
+            Item("Історія диктувань", open_path(HISTORY_PATH)),
+            Item("Налаштування (config.json)", open_path(CONFIG_PATH)),
+            Item("Журнал помилок", open_path(LOGS / "holos.log")),
+            Item("Запускати разом з Windows", self.toggle_autostart, checked=lambda _: self.autostart_enabled()),
             M.SEPARATOR,
-            I("Вийти", self.quit),
+            Item("Вийти", self.quit),
         )
         self.tray = pystray.Icon("holos", img, "Голос — завантаження…", menu)
         self.update_tray_title()
@@ -490,6 +597,7 @@ class App:
 
     def _run_get(self):
         import winreg
+
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY) as k:
                 return winreg.QueryValueEx(k, self.RUN_NAME)[0]
@@ -498,6 +606,7 @@ class App:
 
     def _run_set(self, value):
         import winreg
+
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY) as k:
             if value is None:
                 try:
@@ -519,6 +628,7 @@ class App:
     @staticmethod
     def _legacy_startup_files():
         from pathlib import Path
+
         d = Path(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs\Startup")
         return [d / "Holos.vbs", d / "Голос.lnk"]
 
@@ -563,6 +673,7 @@ class App:
 
 def _ollama_running() -> bool:
     import urllib.request
+
     try:
         urllib.request.urlopen("http://127.0.0.1:11434/api/version", timeout=1)
         return True
@@ -573,6 +684,7 @@ def _ollama_running() -> bool:
 def first_run_setup() -> bool:
     """Вікно першого запуску: завантаження моделей з прогресом."""
     from tkinter import ttk
+
     from download_models import STEPS, download_all
 
     win = tk.Tk()
@@ -585,10 +697,15 @@ def first_run_setup() -> bool:
     frm = ttk.Frame(win, padding=20)
     frm.pack()
     ttk.Label(frm, text="Голос: диктування і читання вслух", font=("Segoe UI", 13, "bold")).pack(anchor="w")
-    ttk.Label(frm, justify="left", wraplength=440, text=(
-        "Для роботи потрібно один раз завантажити моделі (~3 ГБ). "
-        "Після цього програма працює повністю офлайн — ваш голос і тексти нікуди не надсилаються.")).pack(
-        anchor="w", pady=(6, 12))
+    ttk.Label(
+        frm,
+        justify="left",
+        wraplength=440,
+        text=(
+            "Для роботи потрібно один раз завантажити моделі (~3 ГБ). "
+            "Після цього програма працює повністю офлайн — ваш голос і тексти нікуди не надсилаються."
+        ),
+    ).pack(anchor="w", pady=(6, 12))
     labels = []
     for st in STEPS:
         lb = ttk.Label(frm, text="○  " + st)
@@ -597,27 +714,38 @@ def first_run_setup() -> bool:
 
     # --- необов'язкові доповнення ---
     import cuda_pack
-    from common import cuda_libs_available
     from cleanup import Cleaner
+    from common import cuda_libs_available
+
     extras = ttk.Frame(frm)
     extras.pack(anchor="w", fill="x", pady=(10, 0))
     var_gpu = tk.BooleanVar(value=False)
     if cuda_pack.has_nvidia() and not cuda_libs_available():
         var_gpu.set(True)
-        ttk.Checkbutton(extras, variable=var_gpu, text=(
-            f"Прискорення на відеокарті NVIDIA (+{cuda_pack.APPROX_MB / 1000:.1f} ГБ) — "
-            "розпізнавання у 5–10 разів швидше")).pack(anchor="w")
+        ttk.Checkbutton(
+            extras,
+            variable=var_gpu,
+            text=(
+                f"Прискорення на відеокарті NVIDIA (+{cuda_pack.APPROX_MB / 1000:.1f} ГБ) — "
+                "розпізнавання у 5–10 разів швидше"
+            ),
+        ).pack(anchor="w")
     cfg = Config()
     cleaner = Cleaner(cfg)
     ollama_models = cleaner.available_models()
     var_llm = tk.BooleanVar(value=False)
     ollama_up = bool(ollama_models) or cleaner.pick_model() is not None or _ollama_running()
     if ollama_up and not cleaner.pick_model():
-        ttk.Checkbutton(extras, variable=var_llm, text=(
-            "Розумне очищення тексту: завантажити модель qwen3:8b в Ollama (~5 ГБ)")).pack(anchor="w")
+        ttk.Checkbutton(
+            extras, variable=var_llm, text=("Розумне очищення тексту: завантажити модель qwen3:8b в Ollama (~5 ГБ)")
+        ).pack(anchor="w")
     elif not ollama_up:
-        lnk = ttk.Label(extras, foreground="#2f6fd6", cursor="hand2", text=(
-            "Необов'язково: для «розумного очищення» тексту встановіть Ollama (ollama.com)"))
+        lnk = ttk.Label(
+            extras,
+            foreground="#2f6fd6",
+            cursor="hand2",
+            text=("Необов'язково: для «розумного очищення» тексту встановіть Ollama (ollama.com)"),
+        )
         lnk.pack(anchor="w")
         lnk.bind("<Button-1>", lambda _: __import__("webbrowser").open("https://ollama.com/download/windows"))
 
@@ -642,7 +770,7 @@ def first_run_setup() -> bool:
                 try:
                     cleaner.pull("qwen3:8b", lambda pct, m: result.update(msg=f"Модель очищення: {pct:.0f}%"))
                 except Exception as e:
-                    logging.warning("Ollama pull: %s", e)   # не критично — програма працює й без очищення
+                    logging.warning("Ollama pull: %s", e)  # не критично — програма працює й без очищення
             result["ok"] = True
         except Exception as e:
             logging.exception("Завантаження моделей")
@@ -652,8 +780,11 @@ def first_run_setup() -> bool:
     def poll():
         i = result["step"]
         for k, lb in enumerate(labels):
-            mark = "✓" if k < i - 1 or result["ok"] or (i == len(STEPS) and result["msg"]) else (
-                "⏳" if k == i - 1 else "○")
+            mark = (
+                "✓"
+                if k < i - 1 or result["ok"] or (i == len(STEPS) and result["msg"])
+                else ("⏳" if k == i - 1 else "○")
+            )
             lb.config(text=f"{mark}  {STEPS[k]}")
         bar["value"] = len(STEPS) if result["ok"] else max(0, i - 1)
         if result["msg"] and not result["done"]:
@@ -685,6 +816,7 @@ def first_run_setup() -> bool:
 def selftest() -> int:
     """holos.exe --selftest : перевірка всіх рушіїв без інтерфейсу (для діагностики)."""
     import numpy as np
+
     out = open(LOGS / "selftest.txt", "w", encoding="utf-8")
 
     def say(*a):
@@ -696,6 +828,7 @@ def selftest() -> int:
     try:
         from stt import Transcriber
         from tts import Speaker
+
         cfg = Config()
         t = time.time()
         tr = Transcriber(cfg)
@@ -716,6 +849,7 @@ def selftest() -> int:
         return 0
     except Exception:
         import traceback
+
         say(traceback.format_exc())
         say("SELFTEST FAILED")
         return 1
@@ -726,6 +860,7 @@ def main():
         sys.exit(selftest())
     if "--download" in sys.argv:  # завантаження моделей без вікна
         from download_models import download_all
+
         download_all()
         return
     if not winutil.single_instance():

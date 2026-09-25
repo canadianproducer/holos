@@ -1,4 +1,5 @@
 """Озвучення: українська — StyleTTS2 (patriotyk), російська/англійська — Piper."""
+
 import logging
 import queue
 import re
@@ -9,8 +10,15 @@ from unicodedata import normalize
 import numpy as np
 import sounddevice as sd
 
-from common import (PIPER_DIR, PIPER_VOICES, STYLETTS_REPO, VERBALIZER_MODEL, VERBALIZER_TOKENIZER,
-                    VOICES_DIR, pick_device)
+from common import (
+    PIPER_DIR,
+    PIPER_VOICES,
+    STYLETTS_REPO,
+    VERBALIZER_MODEL,
+    VERBALIZER_TOKENIZER,
+    VOICES_DIR,
+    pick_device,
+)
 
 UK_SR = 24000
 
@@ -54,8 +62,8 @@ def split_sentences(text: str, max_len=220):
                 cut = p.rfind(" ", 0, max_len)
             if cut < 1:
                 break
-            out.append(p[:cut + 1].strip())
-            p = p[cut + 1:].strip()
+            out.append(p[: cut + 1].strip())
+            p = p[cut + 1 :].strip()
         if p:
             out.append(p)
     return out
@@ -68,6 +76,7 @@ class Verbalizer:
         import ctranslate2
         from huggingface_hub import snapshot_download
         from transformers import M2M100Tokenizer
+
         path = snapshot_download(VERBALIZER_MODEL, allow_patterns=["*.bin", "*.json", "*.txt", "*.model"])
         self.tr = ctranslate2.Translator(path, device="cpu", compute_type="int8")
         self.tok = M2M100Tokenizer.from_pretrained(VERBALIZER_TOKENIZER)
@@ -75,8 +84,9 @@ class Verbalizer:
 
     def __call__(self, text: str) -> str:
         src = self.tok.convert_ids_to_tokens(self.tok.encode(text))
-        res = self.tr.translate_batch([src], target_prefix=[[self.tok.lang_code_to_token["uk"]]],
-                                      beam_size=1, max_decoding_length=512)
+        res = self.tr.translate_batch(
+            [src], target_prefix=[[self.tok.lang_code_to_token["uk"]]], beam_size=1, max_decoding_length=512
+        )
         out = self.tok.decode(self.tok.convert_tokens_to_ids(res[0].hypotheses[0][1:]))
         return out or text
 
@@ -86,7 +96,8 @@ class UkEngine:
         import torch
         from ipa_uk import ipa
         from styletts2_inference.models import StyleTTS2
-        from ukrainian_word_stress import StressSymbol, Stressifier
+        from ukrainian_word_stress import Stressifier, StressSymbol
+
         self.torch = torch
         self.ipa = ipa
         self.acute = StressSymbol.CombiningAcuteAccent
@@ -99,7 +110,7 @@ class UkEngine:
 
     def synth(self, text, voice, speed):
         t = text.strip().replace('"', "").replace("«", "").replace("»", "")
-        t = t.replace("+", self.acute)          # «Му+дрого» — ручний наголос
+        t = t.replace("+", self.acute)  # «Му+дрого» — ручний наголос
         t = normalize("NFKC", t)
         t = re.sub(r"[᠆‐‑‒–—―⁻₋−⸺⸻]", "-", t)
         if t and t[-1] not in ".?!:-…":
@@ -122,12 +133,14 @@ class PiperEngine:
         key = (lang, gender)
         if key not in self.cache:
             from piper import PiperVoice
+
             rel = PIPER_VOICES[key]
             self.cache[key] = PiperVoice.load(str(PIPER_DIR / rel.split("/")[-1]))
         return self.cache[key]
 
     def synth(self, text, lang, gender, speed):
         from piper import SynthesisConfig
+
         v = self.voice(lang, gender)
         cfg = SynthesisConfig(length_scale=1.0 / max(speed, 0.5))
         chunks = [c.audio_float_array for c in v.synthesize(text, syn_config=cfg)]
