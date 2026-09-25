@@ -23,7 +23,10 @@ RES_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)) / "assets"
 #  - портативний режим: файл portable.txt поруч із exe -> все поруч з програмою (флешка, копіювання теки);
 #  - інакше %LOCALAPPDATA%\Holos (Program Files недоступна для запису).
 _portable = APP_DIR / "portable.txt"
-if _portable.exists():
+if os.environ.get("HOLOS_DATA_DIR"):
+    # явна тека даних (тести, кілька профілів)
+    ROOT = Path(os.environ["HOLOS_DATA_DIR"])
+elif _portable.exists():
     # portable.txt порожній -> дані поруч із exe; або містить шлях до теки даних
     _p = _portable.read_text(encoding="utf-8-sig").strip()
     ROOT = Path(_p) if _p else APP_DIR

@@ -42,6 +42,18 @@ SYSTEM = (
     "OUT: Слухай, а як працює цей pipeline в нашому проекті?"
 )
 
+
+def postprocess(text: str, out: str) -> str | None:
+    """Відповідь моделі -> очищений текст, або None, якщо результату не можна довіряти
+    (модель не повинна вигадувати нове чи різко скорочувати сказане)."""
+    if "</think>" in out:
+        out = out.split("</think>")[-1]
+    out = out.strip().strip('"«»').strip()
+    if not out or len(out) > len(text) * 1.3 + 20 or len(out) < len(text) * 0.3:
+        return None
+    return out
+
+
 PREFERRED = ["qwen3", "qwen2.5", "gemma3", "gemma2", "llama3.1", "llama3.2", "mistral"]
 
 
@@ -137,15 +149,13 @@ class Cleaner:
             logging.warning("Очищення не вдалося (%s) — лишаю сирий текст", e)
             self._last_load = 0
             return text
-        out = out.strip().strip('"«»').strip()
-        if "</think>" in out:
-            out = out.split("</think>")[-1].strip()
-        # страховка: модель не повинна вигадувати чи різко скорочувати
-        if not out or len(out) > len(text) * 1.3 + 20 or len(out) < len(text) * 0.3:
+        cleaned = postprocess(text, out)
+        if cleaned is None:
             logging.warning(
                 "Очищення дало підозрілий результат (%d → %d симв.) — лишаю сирий текст", len(text), len(out)
             )
             return text
+        out = cleaned
         self._last_load = time.time()
         logging.info("Очищено (%s, %.2f с): %s", model, time.time() - t, redact(out, self.cfg))
         return out
