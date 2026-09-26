@@ -15,7 +15,7 @@ git config core.autocrlf false
 
 for /f "delims=" %%i in ('git status --porcelain') do goto :dirty
 
-git push origin main --follow-tags || goto :fail
+git push origin main || goto :fail
 echo.
 echo ============================================================
 echo  DONE: https://github.com/canadianproducer/holos

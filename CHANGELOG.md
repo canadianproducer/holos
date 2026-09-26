@@ -5,6 +5,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Release script: the tag is pushed separately from the branch, so GitHub reliably starts the release build.
+
 ## [0.4.0] - 2026-09-25
 
 ### Added
