@@ -31,6 +31,8 @@ def changelog_section(text: str, version: str) -> str:
     if not m:
         raise SystemExit(f"CHANGELOG.md has no section [{version}]")
     body = re.sub(r"^\[[^\]]+\]: .*$", "", m.group(1), flags=re.M)  # link definitions at the end of the file
+    # GitHub renders every newline in a release body as a line break: join wrapped list items
+    body = re.sub(r"\n[ \t]+(?=\S)", " ", body)
     return body.strip()
 
 

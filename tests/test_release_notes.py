@@ -42,3 +42,8 @@ def test_current_changelog_has_current_version():
 
     notes = release_notes.main(common.VERSION)
     assert f"Holos-Setup-{common.VERSION}.exe" in notes
+
+
+def test_wrapped_list_items_are_joined():
+    text = "## [2.0.0] - 2026-02-02\n\n### Fixed\n- A long line\n  continued here.\n- Next.\n"
+    assert release_notes.changelog_section(text, "2.0.0") == "### Fixed\n- A long line continued here.\n- Next."

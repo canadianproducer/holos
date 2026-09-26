@@ -7,6 +7,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Release script: the tag is pushed separately from the branch, so GitHub reliably starts the release build.
+- Release notes on GitHub no longer break wrapped lines in the middle of a sentence.
 
 ## [0.4.0] - 2026-09-25
 
