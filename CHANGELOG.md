@@ -6,6 +6,14 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Read-aloud failed with "Permission denied" when the first launch after installing ran with administrator
+  rights: some model files became readable by administrators only. The installer now always starts the app
+  as the normal user, file permissions are reset after the first download, and if the problem is detected
+  the app offers to fix it (Windows asks for confirmation once).
+- A failure to load the read-aloud voice no longer shows a startup error; dictation keeps working.
+- Starting Holos a second time now says that it is already running (the icon is in the tray) instead of
+  silently doing nothing.
+- The log is no longer flooded with Hugging Face download hints.
 - Release script: the tag is pushed separately from the branch, so GitHub reliably starts the release build.
 - Release notes on GitHub no longer break wrapped lines in the middle of a sentence.
 

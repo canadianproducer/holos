@@ -237,8 +237,10 @@ def setup_logging():
     if sys.stdout is not None and not FROZEN:
         handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(level=logging.INFO, format=fmt, handlers=handlers, force=True)
-    for noisy in ("stanza", "urllib3", "httpx", "huggingface_hub", "faster_whisper", "PIL"):
+    for noisy in ("stanza", "urllib3", "httpx", "faster_whisper", "PIL"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # huggingface_hub засипає журнал порадами (HF_TOKEN, hf_xet), які нам не потрібні
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
     def hook(exc_type, exc, tb):
         logging.critical("Необроблена помилка", exc_info=(exc_type, exc, tb))
@@ -247,6 +249,63 @@ def setup_logging():
     threading.excepthook = lambda a: logging.critical(
         "Помилка в потоці %s", a.thread.name if a.thread else "?", exc_info=(a.exc_type, a.exc_value, a.exc_traceback)
     )
+
+
+def is_elevated() -> bool:
+    """Чи запущено процес з правами адміністратора."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def is_access_denied(exc: BaseException | None) -> bool:
+    """PermissionError десь у ланцюжку винятків (Windows не дає прочитати файл)."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        if isinstance(exc, PermissionError):
+            return True
+        seen.add(id(exc))
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+def icacls_path() -> str:
+    """Повний шлях до системної icacls.exe (не шукаємо в PATH — так безпечніше)."""
+    return os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "icacls.exe")
+
+
+def reset_permissions_args(path: Path) -> list[str]:
+    """icacls: повернути файлам у теці звичайні успадковані права (рекурсивно, без зупинки на помилках)."""
+    return [str(path), "/reset", "/T", "/C", "/Q"]
+
+
+def reset_permissions(path: Path = ROOT) -> bool:
+    """Виправляє права на файли в теці даних.
+
+    Якщо «Голос» вперше запустили від імені адміністратора, частина файлів моделей (stanza пише їх
+    через тимчасову теку з правами «лише адміністратори») стає недоступною при звичайному запуску.
+    Виклик з того самого процесу, що створив файли, повертає їм права теки користувача."""
+    if os.name != "nt":
+        return True
+    import subprocess
+
+    try:
+        r = subprocess.run(
+            [icacls_path(), *reset_permissions_args(path)],
+            capture_output=True,
+            timeout=600,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        logging.info("Права доступу до %s скинуто (код %s)", path, r.returncode)
+        return r.returncode == 0
+    except Exception as e:
+        logging.warning("Не вдалося скинути права доступу: %s", e)
+        return False
 
 
 def add_cuda_dll_dirs():
