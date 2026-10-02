@@ -194,6 +194,53 @@ def copy_selection(timeout=0.6) -> str:
     return text
 
 
+def message_box(text: str, title: str = "Голос"):
+    """Просте вікно-повідомлення поверх усіх вікон (без tkinter)."""
+    if IS_WIN:
+        user32.MessageBoxW(None, text, title, 0x40 | 0x40000)  # MB_ICONINFORMATION | MB_TOPMOST
+
+
+def run_elevated_and_wait(exe: str, params: str, timeout_ms: int = 600_000) -> int | None:
+    """Запускає програму з правами адміністратора (Windows спитає дозволу) і чекає завершення.
+    Повертає код виходу або None, якщо користувач відмовив."""
+    if not IS_WIN:
+        return None
+
+    class SHELLEXECUTEINFOW(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("fMask", ctypes.c_ulong),
+            ("hwnd", wintypes.HWND),
+            ("lpVerb", wintypes.LPCWSTR),
+            ("lpFile", wintypes.LPCWSTR),
+            ("lpParameters", wintypes.LPCWSTR),
+            ("lpDirectory", wintypes.LPCWSTR),
+            ("nShow", ctypes.c_int),
+            ("hInstApp", wintypes.HINSTANCE),
+            ("lpIDList", ctypes.c_void_p),
+            ("lpClass", wintypes.LPCWSTR),
+            ("hkeyClass", wintypes.HKEY),
+            ("dwHotKey", wintypes.DWORD),
+            ("hIconOrMonitor", wintypes.HANDLE),
+            ("hProcess", wintypes.HANDLE),
+        ]
+
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    info = SHELLEXECUTEINFOW(
+        cbSize=ctypes.sizeof(SHELLEXECUTEINFOW), fMask=0x40, lpVerb="runas", lpFile=exe, lpParameters=params, nShow=0
+    )  # SEE_MASK_NOCLOSEPROCESS, SW_HIDE
+    if not shell32.ShellExecuteExW(ctypes.byref(info)):
+        logging.warning("Запуск від імені адміністратора не вдався (код %s)", ctypes.get_last_error())
+        return None  # 1223 = користувач натиснув «Ні»
+    try:
+        kernel32.WaitForSingleObject(info.hProcess, timeout_ms)
+        code = wintypes.DWORD()
+        kernel32.GetExitCodeProcess(info.hProcess, ctypes.byref(code))
+        return code.value
+    finally:
+        kernel32.CloseHandle(info.hProcess)
+
+
 def single_instance(name="HolosVoiceApp") -> bool:
     if not IS_WIN:
         return True

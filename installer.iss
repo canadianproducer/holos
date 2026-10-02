@@ -75,9 +75,10 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Holos"; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
-Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent
+; runasoriginaluser: програма не повинна стартувати з правами адміністратора, навіть якщо інсталятор їх мав
+Filename: "{app}\Holos.exe"; Description: "Запустити {#AppName}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 ; після тихого оновлення з програми — запускаємо нову версію
-Filename: "{app}\Holos.exe"; Flags: nowait; Check: ShouldRelaunch
+Filename: "{app}\Holos.exe"; Flags: nowait runasoriginaluser; Check: ShouldRelaunch
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\Holos.vbs"

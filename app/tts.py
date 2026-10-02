@@ -17,6 +17,7 @@ from common import (
     VERBALIZER_MODEL,
     VERBALIZER_TOKENIZER,
     VOICES_DIR,
+    is_access_denied,
     pick_device,
 )
 
@@ -223,9 +224,12 @@ class Speaker:
                     audio, sr = self._synth(sent, lang, speed)
                     if audio is not None and audio.size:
                         q.put((audio, sr))
-        except Exception:
+        except Exception as e:
             logging.exception("Помилка озвучення")
-            self.on_state("error", "Помилка озвучення — див. logs/holos.log")
+            if is_access_denied(e):
+                self.on_state("access_denied")
+            else:
+                self.on_state("error", "Помилка озвучення — див. журнал")
         finally:
             q.put(None)
             player.join()

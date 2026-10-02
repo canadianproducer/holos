@@ -11,6 +11,7 @@ import threading
 import time
 import tkinter as tk
 import wave
+from subprocess import list2cmdline as subprocess_list2cmdline
 
 import common  # noqa: F401  (до будь-яких ML-бібліотек: задає теки моделей і змінні HF_*)
 import winutil
@@ -24,6 +25,9 @@ from common import (
     VERSION,
     Config,
     append_history,
+    is_access_denied,
+    is_elevated,
+    reset_permissions,
     setup_logging,
 )
 
@@ -258,6 +262,7 @@ class App:
         self.tray = None
         self.update = None
         self.ask_update = False
+        self.fix_offered = False
         self.repair_autostart()
         threading.Thread(target=self.check_update, name="update", daemon=True).start()
         threading.Thread(target=self.load_models, name="loader", daemon=True).start()
@@ -275,6 +280,11 @@ class App:
         try:
             while True:
                 state, text = self.events.get_nowait()
+                if state == "access_denied":
+                    state, text = "error", "Немає доступу до файлів моделей"
+                    if not self.fix_offered:
+                        self.fix_offered = True
+                        self.root.after(200, self.prompt_fix_permissions)
                 if state == "error":
                     self.error_until = time.time() + 3
                     play_sound(SND_ERR, self.cfg)
@@ -313,11 +323,18 @@ class App:
                 log.info("Очищення: %s", self.cleaner.pick_model() or "Ollama не знайдено — вимкнено")
             except Exception:
                 log.exception("Очищення")
-            # Голос читання вантажимо у фоні, щоб перше читання було швидким.
-            self.speaker.load_uk()
         except Exception as e:
             log.exception("Помилка завантаження моделей")
-            self.set_state("error", f"Помилка завантаження: {e}"[:60])
+            self.set_state("access_denied" if is_access_denied(e) else "error", f"Помилка завантаження: {e}"[:60])
+            return
+        # Голос читання вантажимо у фоні, щоб перше читання було швидким. Помилка тут не заважає
+        # диктуванню — покажемо її, лише коли людина спробує читати.
+        try:
+            self.speaker.load_uk()
+        except Exception as e:
+            log.exception("Голос читання не завантажено")
+            if is_access_denied(e):
+                self.set_state("access_denied")
 
     # ---------- диктування ----------
     def on_dictate_down(self):
@@ -420,6 +437,41 @@ class App:
             except Exception:
                 pass
             self.ask_update = True  # діалог покаже головний потік (tkinter — лише з нього)
+
+    # ---------- права доступу до файлів моделей ----------
+    def prompt_fix_permissions(self):
+        from tkinter import messagebox
+
+        if not messagebox.askyesno(
+            "Голос",
+            "Windows не дає «Голосу» прочитати частину файлів моделей.\n\n"
+            "Так буває, якщо програму вперше запустили від імені адміністратора.\n"
+            "Виправити зараз? Windows попросить дозволу.",
+        ):
+            return
+        threading.Thread(target=self.fix_permissions, name="fix-perms", daemon=True).start()
+
+    def fix_permissions(self):
+        from common import icacls_path, reset_permissions_args
+
+        self.set_state("loading", "Виправляю доступ до файлів…")
+        params = subprocess_list2cmdline(reset_permissions_args(ROOT))
+        code = winutil.run_elevated_and_wait(icacls_path(), params)
+        log.info("Виправлення прав: код %s", code)
+        if code is None:
+            self.set_state("error", "Доступ не виправлено")
+            return
+        try:
+            if not self.ready.is_set():
+                self.transcriber.load()
+                self.ready.set()
+            self.speaker.uk = None
+            self.speaker.load_uk()
+            self.set_state("idle")
+            self.update_tray_title()
+        except Exception as e:
+            log.exception("Після виправлення прав")
+            self.set_state("error", f"Помилка завантаження: {e}"[:60])
 
     def prompt_update(self):
         from tkinter import messagebox
@@ -777,6 +829,7 @@ def first_run_setup() -> bool:
                     cleaner.pull("qwen3:8b", lambda pct, m: result.update(msg=f"Модель очищення: {pct:.0f}%"))
                 except Exception as e:
                     logging.warning("Ollama pull: %s", e)  # не критично — програма працює й без очищення
+            reset_permissions(ROOT)  # файли мають бути доступні й при звичайному (не адмін) запуску
             result["ok"] = True
         except Exception as e:
             logging.exception("Завантаження моделей")
@@ -931,10 +984,15 @@ def main():
         from download_models import download_all
 
         download_all()
+        reset_permissions(ROOT)
         return
     if not winutil.single_instance():
         log.info("Вже запущено — виходжу")
+        winutil.message_box("«Голос» уже працює.\n\nЙого іконка — у треї біля годинника (можливо, під стрілкою ^).")
         return
+    if is_elevated():
+        # запуск від імені адміністратора: файли, створені раніше в такому режимі, робимо доступними й без нього
+        threading.Thread(target=reset_permissions, args=(ROOT,), name="perms", daemon=True).start()
     log.info("Старт Голос, Python %s, дані: %s", sys.version.split()[0], ROOT)
     if not READY_FLAG.exists():
         if not first_run_setup():
