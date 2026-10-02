@@ -19,6 +19,7 @@ from common import (
     CONFIG_PATH,
     HISTORY_PATH,
     LOGS,
+    MODELS,
     READY_FLAG,
     RES_DIR,
     ROOT,
@@ -26,7 +27,6 @@ from common import (
     Config,
     append_history,
     is_access_denied,
-    is_elevated,
     reset_permissions,
     setup_logging,
 )
@@ -237,6 +237,7 @@ class App:
         self.rec_started = 0.0
         self.ready = threading.Event()
         self.stt_lock = threading.Lock()
+        self.load_lock = threading.Lock()
 
         self.root = tk.Tk()
         self.root.withdraw()
@@ -285,6 +286,8 @@ class App:
                     if not self.fix_offered:
                         self.fix_offered = True
                         self.root.after(200, self.prompt_fix_permissions)
+                if state not in ("idle", "error"):
+                    self.error_until = 0  # нова дія (завантаження, запис) завершує показ помилки
                 if state == "error":
                     self.error_until = time.time() + 3
                     play_sound(SND_ERR, self.cfg)
@@ -313,8 +316,9 @@ class App:
     def load_models(self):
         try:
             self.set_state("loading", "Завантажую розпізнавання…")
-            self.transcriber.load()
-            self.ready.set()
+            with self.load_lock:
+                self.transcriber.load()
+                self.ready.set()
             self.set_state("idle")
             self.update_tray_title()
             log.info("Готово до диктування")
@@ -448,23 +452,32 @@ class App:
             "Так буває, якщо програму вперше запустили від імені адміністратора.\n"
             "Виправити зараз? Windows попросить дозволу.",
         ):
+            self.fix_offered = False  # запропонуємо ще раз при наступній помилці
             return
-        threading.Thread(target=self.fix_permissions, name="fix-perms", daemon=True).start()
-
-    def fix_permissions(self):
         from common import icacls_path, reset_permissions_args
 
+        # запит UAC — з головного потоку одразу після «Так», щоб він з'явився поверх вікон
+        handle = winutil.run_elevated(icacls_path(), subprocess_list2cmdline(reset_permissions_args(MODELS)))
+        if not handle:
+            self.fix_offered = False
+            self.set_state("error", "Доступ не виправлено")
+            return
+        threading.Thread(target=self.fix_permissions, args=(handle,), name="fix-perms", daemon=True).start()
+
+    def fix_permissions(self, handle):
+        self.error_until = 0
         self.set_state("loading", "Виправляю доступ до файлів…")
-        params = subprocess_list2cmdline(reset_permissions_args(ROOT))
-        code = winutil.run_elevated_and_wait(icacls_path(), params)
+        code = winutil.wait_process(handle)
         log.info("Виправлення прав: код %s", code)
         if code is None:
+            self.fix_offered = False
             self.set_state("error", "Доступ не виправлено")
             return
         try:
-            if not self.ready.is_set():
-                self.transcriber.load()
-                self.ready.set()
+            with self.load_lock:  # завантажувач міг ще не закінчити — не вантажимо Whisper двічі
+                if not self.ready.is_set():
+                    self.transcriber.load()
+                    self.ready.set()
             self.speaker.uk = None
             self.speaker.load_uk()
             self.set_state("idle")
@@ -829,7 +842,7 @@ def first_run_setup() -> bool:
                     cleaner.pull("qwen3:8b", lambda pct, m: result.update(msg=f"Модель очищення: {pct:.0f}%"))
                 except Exception as e:
                     logging.warning("Ollama pull: %s", e)  # не критично — програма працює й без очищення
-            reset_permissions(ROOT)  # файли мають бути доступні й при звичайному (не адмін) запуску
+            reset_permissions(MODELS)  # файли мають бути доступні й при звичайному (не адмін) запуску
             result["ok"] = True
         except Exception as e:
             logging.exception("Завантаження моделей")
@@ -984,15 +997,12 @@ def main():
         from download_models import download_all
 
         download_all()
-        reset_permissions(ROOT)
+        reset_permissions(MODELS)
         return
     if not winutil.single_instance():
         log.info("Вже запущено — виходжу")
         winutil.message_box("«Голос» уже працює.\n\nЙого іконка — у треї біля годинника (можливо, під стрілкою ^).")
         return
-    if is_elevated():
-        # запуск від імені адміністратора: файли, створені раніше в такому режимі, робимо доступними й без нього
-        threading.Thread(target=reset_permissions, args=(ROOT,), name="perms", daemon=True).start()
     log.info("Старт Голос, Python %s, дані: %s", sys.version.split()[0], ROOT)
     if not READY_FLAG.exists():
         if not first_run_setup():
