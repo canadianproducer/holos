@@ -64,6 +64,12 @@ if IS_WIN:
     user32.IsWindow.argtypes = (wintypes.HWND,)
     user32.GetAsyncKeyState.restype = ctypes.c_short
     user32.GetClipboardSequenceNumber.restype = wintypes.DWORD
+    # дескриптори процесів — 64-бітні: без argtypes ctypes передав би їх як int і міг обрізати
+    kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    user32.MessageBoxW.argtypes = (wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.UINT)
 
 
 def _key(vk, up=False):
