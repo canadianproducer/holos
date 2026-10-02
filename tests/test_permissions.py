@@ -14,12 +14,28 @@ def test_access_denied_found_in_exception_chain():
 def test_access_denied_implicit_context():
     try:
         try:
-            open("/nonexistent/x")  # FileNotFoundError, not access denied
+            raise PermissionError(13, "Permission denied")
+        except PermissionError:
+            raise RuntimeError("while loading")  # noqa: B904 — implicit __context__ on purpose
+    except RuntimeError as e:
+        assert common.is_access_denied(e)
+
+
+def test_other_errors_are_not_access_denied():
+    try:
+        try:
+            raise FileNotFoundError(2, "missing")
         except OSError:
             raise ValueError("wrapped") from None
     except ValueError as e:
         assert not common.is_access_denied(e)
     assert not common.is_access_denied(None)
+
+
+def test_file_locked_by_another_program_is_not_access_denied():
+    e = PermissionError(13, "in use")
+    e.winerror = 32  # ERROR_SHARING_VIOLATION
+    assert not common.is_access_denied(e)
 
 
 def test_reset_permissions_args_are_recursive_and_continue_on_errors():

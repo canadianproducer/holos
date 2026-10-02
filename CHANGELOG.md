@@ -7,9 +7,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Read-aloud failed with "Permission denied" when the first launch after installing ran with administrator
-  rights: some model files became readable by administrators only. The installer now always starts the app
-  as the normal user, file permissions are reset after the first download, and if the problem is detected
-  the app offers to fix it (Windows asks for confirmation once).
+  rights: some model files became readable by administrators only. Permissions of the model files are now
+  reset after the first download, and if the problem is detected the app offers to fix it (Windows asks for
+  confirmation once).
 - A failure to load the read-aloud voice no longer shows a startup error; dictation keeps working.
 - Starting Holos a second time now says that it is already running (the icon is in the tray) instead of
   silently doing nothing.

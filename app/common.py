@@ -251,24 +251,13 @@ def setup_logging():
     )
 
 
-def is_elevated() -> bool:
-    """Чи запущено процес з правами адміністратора."""
-    if os.name != "nt":
-        return False
-    try:
-        import ctypes
-
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
-
-
 def is_access_denied(exc: BaseException | None) -> bool:
     """PermissionError десь у ланцюжку винятків (Windows не дає прочитати файл)."""
     seen = set()
     while exc is not None and id(exc) not in seen:
         if isinstance(exc, PermissionError):
-            return True
+            # 32 = файл зайнятий іншою програмою (антивірус тощо) — виправлення прав тут не допоможе
+            return getattr(exc, "winerror", None) != 32
         seen.add(id(exc))
         exc = exc.__cause__ or exc.__context__
     return False
@@ -284,7 +273,7 @@ def reset_permissions_args(path: Path) -> list[str]:
     return [str(path), "/reset", "/T", "/C", "/Q"]
 
 
-def reset_permissions(path: Path = ROOT) -> bool:
+def reset_permissions(path: Path = MODELS) -> bool:
     """Виправляє права на файли в теці даних.
 
     Якщо «Голос» вперше запустили від імені адміністратора, частина файлів моделей (stanza пише їх
