@@ -5,6 +5,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-02
+
 ### Fixed
 - Read-aloud failed with "Permission denied" when the first launch after installing ran with administrator
   rights: some model files became readable by administrators only. Permissions of the model files are now
@@ -62,7 +64,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - First working release: dictation (Right Ctrl) and read-aloud (Ctrl+Shift+Space).
 
-[Unreleased]: https://github.com/canadianproducer/holos/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/canadianproducer/holos/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/canadianproducer/holos/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/canadianproducer/holos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/canadianproducer/holos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/canadianproducer/holos/releases/tag/v0.2.0
